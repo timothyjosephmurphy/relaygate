@@ -122,3 +122,6 @@ Works with `sizeIn` hang at true scale; unknown sizes use a default by aspect ra
 - Q8 (TJ): Default referral %, and should it apply to sales (needs artist-side BTCPay automation) or zaps only at first?
 - Q9 (TJ): Which relays to default to? Should the directory event kind be custom or reuse an existing NIP?
 - Q7: Portfolio sites (e.g. chasetoole) have many images per project with filename-only alts. Should one work = one project (cover image) or every image?
+
+## Decision (TJ, Oct 18 2026)
+For portfolio sites, every image counts as its own work (not one cover per project).
