@@ -87,10 +87,10 @@ export function extractFromHtml(html, pageUrl, ctx = {}) {
   const author = (() => { for (const el of $('script[type="application/ld+json"]').toArray()) { try { for (const n of walkLd(JSON.parse($(el).contents().text()))) { const c = n.creator || n.author; if (c?.name) return c.name; if (asArr(n['@type']).includes('Person') && n.name) return n.name; } } catch {} } return null; })();
   // 2. <img> fallback (only if page had no structured artworks)
   if (!works.length) {
-    $('header img, footer img, nav img, [class*="logo"] img, img[class*="logo"]').attr('data-slipgate-skip', '1');
+    $('header img, footer img, nav img, [class*="logo"] img, img[class*="logo"]').attr('data-relaygate-skip', '1');
     $('img').each((_, el) => {
       const e = $(el);
-      if (e.attr('data-slipgate-skip')) return;
+      if (e.attr('data-relaygate-skip') || e.attr('data-slipgate-skip')) return; // data-slipgate-skip: deprecated alias
       const src = abs(e.attr('data-image') || e.attr('data-src') || pickSrcset(e.attr('srcset')) || e.attr('src'));
       if (!src || src.startsWith('data:') || /\.svg(\?|$)/i.test(src)) return;
       const alt = clean(e.attr('alt'));
@@ -116,15 +116,28 @@ export function extractFromHtml(html, pageUrl, ctx = {}) {
 }
 function pickSrcset(s) { if (!s) return ''; let best = '', bw = 0; for (const p of s.split(',')) { const [u, d] = p.trim().split(/\s+/); const w = parseInt(d) || 1; if (w >= bw) { bw = w; best = u; } } return best; }
 
+/** Parse one sitemap XML body. Returns { indexLocs, pages: Map(url -> imageUrls[]) }. */
+export function parseSitemapXml(xml) {
+  const $ = cheerio.load(xml, { xmlMode: true });
+  const indexLocs = $('sitemap > loc').map((_, e) => $(e).text().trim()).get().filter(Boolean);
+  const pages = new Map();
+  if (!indexLocs.length) {
+    $('url').each((_, u) => {
+      const loc = $(u).children('loc').text().trim();
+      if (loc) pages.set(loc, $(u).find('image\\:loc, loc').slice(1).map((_, e) => $(e).text().trim()).get());
+    });
+  }
+  return { indexLocs, pages };
+}
+
 async function readSitemaps(client, origin, robots, log, depth = 0, urls = null) {
   const pages = new Map(); // url -> [imageUrls]
   const queue = urls || (robots.sitemaps.length ? robots.sitemaps : [origin + '/sitemap.xml']);
   for (const sm of queue) {
     const r = await client.text(sm); if (!r) continue;
-    const $ = cheerio.load(r.text, { xmlMode: true });
-    const subs = $('sitemap > loc').map((_, e) => $(e).text().trim()).get();
-    if (subs.length && depth < 2) { for (const [k, v] of await readSitemaps(client, origin, robots, log, depth + 1, subs)) pages.set(k, v); continue; }
-    $('url').each((_, u) => { const loc = $(u).children('loc').text().trim(); if (loc) pages.set(loc, $(u).find('image\\:loc, loc').slice(1).map((_, e) => $(e).text().trim()).get()); });
+    const { indexLocs, pages: parsed } = parseSitemapXml(r.text);
+    if (indexLocs.length && depth < 2) { for (const [k, v] of await readSitemaps(client, origin, robots, log, depth + 1, indexLocs)) pages.set(k, v); continue; }
+    for (const [k, v] of parsed) pages.set(k, v);
   }
   log(`sitemap: ${pages.size} pages`);
   return pages;
@@ -201,7 +214,7 @@ export async function importSite(siteUrl, { out = 'gallery-out', name, maxPages 
   }
   works = works.filter(w => !w.duplicateOf);
   const gallery = {
-    schema: 'slipgate-gallery/1', generatedAt: new Date().toISOString(),
+    schema: 'relaygate/1', generatedAt: new Date().toISOString(),
     artist: { name: name || author || siteName || new URL(origin).hostname, siteUrl: origin },
     works: works.map(({ description, ...w }) => ({ ...w, description: description ? description.slice(0, 500) : null })),
   };

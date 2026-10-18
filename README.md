@@ -1,7 +1,5 @@
 # Relay Gate
 
-*Working name. The final pick is pending (studio-tracker#68). Rename here and in SPEC.md line 3.*
-
 Turn your art website into a walkable 3D gallery, published on **Nostr** under your own key.
 
 ```

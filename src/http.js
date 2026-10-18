@@ -1,6 +1,6 @@
 // Polite HTTP: identifying UA, global rate limit, robots.txt.
-export const UA = 'SlipgateGalleryImporter/0.1 (+https://tjm.art/slipgate; artist-run site importer)';
-const UA_TOKEN = 'slipgategalleryimporter';
+export const UA = 'RelayGateImporter/0.1 (+https://tjm.art/relaygate; artist-run site importer)';
+const UA_TOKEN = 'relaygateimporter';
 
 export class Client {
   constructor({ delayMs = 1000, timeoutMs = 60000, log = () => {} } = {}) {

@@ -1,9 +1,8 @@
 # Relay Gate — SPEC (v0.2 draft, Nostr-first)
 
-> **Project name: Relay Gate** (working name, final pick pending on studio-tracker#68).
-> The name lives in this line and in the README title. To rename, change both and search-replace
-> `Relay Gate` / `relaygate` (CLI, npm scope, tag values) across SPEC.md and README.md.
-> The code (package.json, bin, importer UA, schema strings) still says the old name; renaming it is part of M1.
+> **Project name: Relay Gate.**
+> Package/CLI: `relaygate`. Gallery schema id: `relaygate/1`. Skip attribute: `data-relaygate-skip`
+> (deprecated alias `data-slipgate-skip` still accepted).
 
 Relay Gate turns an artist's own website into a walkable 3D gallery, publishes it to **Nostr** under the artist's own key, and links artists to each other through **gates**. There is no central server: galleries are signed Nostr events, images sit on Blossom or the artist's site, discovery runs over relays, and money goes straight to the artist over Lightning. Every payment is written to the artist's books.
 
