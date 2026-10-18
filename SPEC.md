@@ -1,127 +1,195 @@
-# Slipgate Gallery — SPEC (v0.1 draft)
+# Relay Gate — SPEC (v0.2 draft, Nostr-first)
 
-Turn an artist's own website into a self-hosted 3D "dungeon" gallery, linked to other artists' galleries through slip gates.
+> **Project name: Relay Gate** (working name, final pick pending on studio-tracker#68).
+> The name lives in this line and in the README title. To rename, change both and search-replace
+> `Relay Gate` / `relaygate` (CLI, npm scope, tag values) across SPEC.md and README.md.
+> The code (package.json, bin, importer UA, schema strings) still says the old name; renaming it is part of M1.
 
-## 1. CLI
-```
-npx slipgate-gallery <url> [--out dir] [--name "Artist Name"] [--gate-to <url>]...
-  --out        output folder (default ./slipgate-out)
-  --name       artist name override (else JSON-LD creator / og:site_name / hostname)
-  --gate-to    add an outbound gate to another gallery's URL (repeatable)
-  --max-pages  crawl cap (default 600)   --delay ms between requests (default 1000)
-  --no-download  write gallery.json with remote image URLs only
-```
+Relay Gate turns an artist's own website into a walkable 3D gallery, publishes it to **Nostr** under the artist's own key, and links artists to each other through **gates**. There is no central server: galleries are signed Nostr events, images sit on Blossom or the artist's site, discovery runs over relays, and money goes straight to the artist over Lightning. Every payment is written to the artist's books.
 
-## 2. Pipeline
-1. **Import** (`src/importer.js`, built): robots.txt → sitemap.xml (+ image sitemap) → per-page JSON-LD (VisualArtwork/Painting/Product/ImageObject) → Open Graph → Squarespace `?format=json` *only if robots.txt allows it* → `<img>` fallback with size/logo filters. Dedupe by normalized image URL, preferring structured data. Download images at a large size (Squarespace `?format=2500w`). Write `gallery.json`.
-2. **Build** (placeholder): `const core = await import('@slipgate/engine-core'); core.build({ gallery, gates, outDir })`. See §8.
-3. **Output**: a static folder:
-```
-out/ index.html  gallery.json  slipgate.json  images/*  engine/* (copied from core)  embed.html
-```
+Owner and maintainer: TJ Murphy (sole proprietor). License: MIT.
 
-## 3. gallery.json
+---
+
+## 1. Goal and one-command flow
+```
+npx relaygate <url> [--out dir] [--name "Artist"] [--gate-to <npub|naddr|url>]... [--publish] [--relays wss://…,…]
+  --max-pages 600  --delay 1000 ms  --no-download  --blossom <server-url>  --static (also write a static site)
+```
+1. **Import** (built, `src/importer.js`): robots.txt → sitemap (+ image sitemap) → JSON-LD (VisualArtwork/Painting/Product/ImageObject) → Open Graph → Squarespace `?format=json` *only if robots.txt allows* → `<img>` fallback with size/logo filters. Dedupe by normalized URL, preferring structured data. **Every image on the site counts as its own work** (TJ, Oct 18 2026). Output: `gallery.json` (local working copy; schema in §3.6).
+2. **Review** (`relaygate review`, TODO): the artist fills in real size, medium, year and price. Unknown fields stay null and are never guessed.
+3. **Publish** (`--publish`, M1): upload images to Blossom (or keep the artist's site URLs), sign the events in §3 through the artist's signer (§2), and send them to the artist's relays (NIP-65) plus the defaults.
+4. **View**: any Relay Gate viewer opens `naddr1…` (or `https://viewer/#naddr1…`) and loads the gallery from relays (§4). With `--static`, the same folder also deploys to Cloudflare Pages, Netlify, GitHub Pages, an nsite (NIP-5A on Blossom), or `/relaygate/` on the artist's site, and can be embedded with an `<iframe>`.
+
+**First visit: "just the art."** It is a calm walk-through with no HUD. Click a painting to see its title, size, medium, and **View on artist's site**, **Zap**, **Buy** (§5). The game layer (cleanup elves after paint splats, wand, buy scanner, quests) is behind a "Play" toggle. Without WebGL you get a fallback grid of works.
+
+## 2. Identity
+- **Artist = Nostr keypair.** The gallery's author is the artist's `npub`. A gate links two keys, not two domains.
+- **NIP-05** (`artist@domain`), checked through `https://<domain>/.well-known/nostr.json`, proves the artist controls their website domain. The viewer shows a verified badge; the importer warns when the imported site's domain ≠ the NIP-05 domain.
+- **The tool never sees the nsec.** Signing goes through:
+  - **NIP-46 remote signer** (bunker URL or `nostrconnect://` QR, e.g. Amber, nsec.app). This is the default for the CLI.
+  - **NIP-07 browser extension** (Alby, nos2x) when publishing from the web publisher page.
+  - New artists: the docs point to a signer app that creates the key on the artist's own device. We never generate or store keys for them.
+- Profile (kind 0) stays the artist's own. We read `name`, `picture`, `lud16` and `nip05` from it and only write it if the artist asks.
+
+## 3. Data on Nostr
+| What | Event | NIP | Why |
+|---|---|---|---|
+| Gallery manifest | **kind 37440** (proposed, addressable, `d` = gallery id) | new draft NIP "Relay Gate galleries" | No existing kind models an ordered, spatial gallery with gates. NIP-51 picture sets (30006) don't carry layout or gates, and NIP-78 (30078) is app-private by design. 37440 is unregistered in the NIPs README as of Oct 18 2026; we claim it with the draft NIP. |
+| Each work | **kind 20** picture event | NIP-68 (+ NIP-94 `imeta` fields) | Works show up in picture-first clients (Olas etc.) for free. `imeta` carries url, `x` (sha256), `m`, `dim`, `alt`. |
+| Work for sale | **kind 30402** classified listing (`d` = work id) | NIP-99 | Standard addressable listing with `price` and `status` tags, so price and availability change without re-publishing the picture. |
+| Images | Blossom blob (sha256-addressed) or the artist's own URL | NIP-B7 (Blossom). NIP-96 is now unrecommended | Hash = identity, so any mirror works. The viewer checks `x` against the downloaded bytes. |
+| Gates | `a` tags in the manifest → other artists' `37440:<pubkey>:<d>` (shared as `naddr`) | NIP-01 / NIP-19 | A gate is a signed pointer from one artist to another. |
+| Viewer app | kind 31990 handler for kind 37440 | NIP-89 | Any client can offer "open in 3D". |
+| Relays | kind 10002 | NIP-65 | Outbox model: fetch each artist's events from their own write relays. |
+| Discovery | the artist's follows (kind 3), NIP-51 follow sets (30000) used as curated "gate rings", plus relay queries `{kinds:[37440]}` | NIP-02, NIP-51 | No directory server. |
+
+### 3.1 Manifest (kind 37440)
 ```jsonc
-{
-  "schema": "slipgate-gallery/1",
-  "generatedAt": "ISO-8601",
-  "artist": { "name": "TJ Murphy", "siteUrl": "https://tjm.art" },
-  "works": [{
-    "id": "symbiosis-1",                 // slug, unique in gallery
-    "title": "Symbiosis #1",
-    "image": "https://…/IMG_1643.jpg",   // original remote URL
-    "localImage": "images/symbiosis-1.jpg",
-    "page": "https://tjm.art/products/archived-painting-15/",  // the work's own page
-    "size": "44.5 in × 24 in",           // human string, as found
-    "sizeIn": { "w": 44.5, "h": 24 },    // REQUIRED for room splats (§11); null until known, artist fills in
-    "medium": "watercolor", "year": 2021,  // null if unknown — never guessed
-    "availability": { "status": "InStock", "price": "1000.00 USD", "shopUrl": "https://…" },
-    "project": "Behaviour: Dead by Daylight", // optional, for portfolio-style sites
-    "source": "json-ld:VisualArtwork"    // how it was found (debug/QA)
-  }]
-}
+{ "kind": 37440, "content": "<artist statement, markdown>",
+  "tags": [
+    ["d", "tjm-art"], ["title", "TJ Murphy"], ["image", "<thumbnail url>", "<sha256>"],
+    ["r", "https://tjm.art"],                       // source site (matches NIP-05 domain)
+    ["e", "<kind-20 id>", "<relay>", "symbiosis-1"],  // works, in hang order
+    ["a", "30402:<artist-pk>:symbiosis-1", "<relay>"],// sale listing, if any
+    ["a", "37440:<other-pk>:chasetoole", "<relay>", "gate"],  // outbound gate
+    ["layout", "dungeon", "<seed>"],                // deterministic layout hint (§4)
+    ["zap", "<artist-pk>", "<relay>", "90"], ["zap", "<platform-or-ref-pk>", "<relay>", "10"], // optional split (§5)
+    ["L", "relaygate"], ["l", "gallery/1", "relaygate"], ["alt", "Relay Gate 3D gallery: TJ Murphy"] ] }
 ```
-Importer emits `size` today; parsing to `sizeIn` + an artist review step (`slipgate-gallery review`) is TODO.
+### 3.2 Work (kind 20) extra tags
+`["title", …]`, `["imeta", "url …", "x <sha256>", "m image/jpeg", "dim 2500x1348", "alt …"]`, `["size", "113", "61", "cm"]` (real w × h, units `cm|in`; missing tag = unknown), `["medium", "watercolor"]`, `["year", "2021"]`, `["r", "<work page on artist site>"]`, `["a", "37440:<pk>:<d>"]` (back-link to gallery). Corrections mean re-publishing plus a NIP-09 delete of the old event, and the manifest gets the new id.
+### 3.3 Sale listing (kind 30402)
+NIP-99 tags `title`, `price` (`["price","1000","USD"]` or `"SAT"`), `status` (`active|sold`), `image`, `r` (shop URL), plus `["e", <kind-20 id>]`.
+### 3.4 Hosting
+- Images go to Blossom (the artist picks servers; BUD-03 server list) or stay on the artist's site. The viewer falls back across mirrors by hash.
+- Optional static fallback: `--static` writes `index.html`, `gallery.json`, `images/`, `engine/`. It is fully usable without relays and can be deployed as an nsite.
+### 3.5 Relays
+Publish to the artist's NIP-65 write relays plus 2–3 defaults (to decide, Q4). Viewers read the manifest author's write relays first.
+### 3.6 `gallery.json` (local + static fallback)
+Kept from v0.1: `{ schema, generatedAt, artist:{name, siteUrl, npub, nip05, lud16, btcpayUrl, referralSharePct}, works:[{id, title, image, localImage, sha256, page, size, sizeIn:{w,h}|null, medium|null, year|null, availability:{status, price, shopUrl}, project, source}] }`. `publish` maps it 1:1 onto §3.1–3.3.
 
-## 4. slipgate.json (published by every gallery at its root)
-```json
-{ "schema": "slipgate/1", "version": "0.1.0", "id": "tjm-art",
-  "name": "TJ Murphy", "url": "https://tjm.art/slipgate/",
-  "thumbnail": "https://tjm.art/slipgate/thumb.jpg",
-  "gatesOut": [{ "id": "chasetoole", "url": "https://chasetoole.com/slipgate/" }] }
-```
-Gate rendering fetches the target's slipgate.json (name + thumbnail on the portal). If it can't be fetched, the gate shows the bare URL. Fetching it needs CORS on the target: Pages/Netlify `_headers` file is generated.
-
-## 5. Shared gate directory
-- Phase 1: a public git repo `slipgate-directory` with `galleries/<id>.json` = a copy of each slipgate.json, added by PR. CI checks that the URL serves a matching slipgate.json and the domain owner placed it there. Build output = `directory.json`, served statically.
-- Phase 2: "random gate" and "neighbors" in-engine pull from directory.json. Galleries opt in (`"listed": true`).
-- Moderation: maintainers can delist. Signed manifests are not in v1.
-
-## 6. Referral tagging
-Every outbound gate and every painting link gets `?ref=slipgate&from=<gallery-id>` (plus `&work=<id>` on painting links). Artists see this in any analytics (Cloudflare Web Analytics, Plausible, GA, Squarespace/Shopify UTM-ish reports). Gates also set `utm_source=slipgate&utm_medium=gate&utm_campaign=<from>` (open question Q3). No cookies, no tracking pixel of our own.
-
-## 7. Deploy targets
-- **Cloudflare Pages**: `npx wrangler pages deploy slipgate-out --project-name <id>` or drag-and-drop in the dashboard.
-- **Netlify**: `npx netlify deploy --dir slipgate-out --prod` or Netlify Drop.
-- **Any static host**: upload the folder to `/slipgate/` on your site (S3, GitHub Pages, cPanel…). Relative paths only.
-- **Embed** (Squarespace code block, WordPress, etc.):
-```html
-<iframe src="https://YOUR-GALLERY/slipgate/?embed=1" style="width:100%;aspect-ratio:16/9;border:0" allow="fullscreen; xr-spatial-tracking" loading="lazy" title="3D gallery"></iframe>
-```
-
-## 8. First visit: "just the art"
-- Default is a calm walk-through: no HUD, no enemies or score, soft lighting, click a painting for title/size/medium and a **"View on artist's site"** link (its `page`, referral-tagged).
-- The game layer (quests, eggs, movement tricks) is opt-in via a small "Play" toggle, remembered in localStorage.
-- Works without WebGL: a fallback grid of works linking to their pages (also good for SEO/accessibility).
-
-## 9. Engine core interface (for Studio manager)
+## 4. Engine interface and loading from relays
+The 3D engine/shared core is built separately (Studio manager). The interface below is the contract.
 ```ts
-interface SlipgateCore {
+interface GateCore {
   version: string;
-  loadGallery(gallery: GalleryJson, opts?: { baseUrl?: string }): Promise<void>;
-  layout(works: Work[], opts?: { seed?: string; style?: 'dungeon' }): Layout; // deterministic
-  addGates(gates: { id: string; url: string; name?: string; thumbnail?: string }[]): void;
-  mount(el: HTMLElement, opts: { mode: 'calm' | 'game'; onWorkClick(w: Work): void; onGateEnter(g): void }): void;
-  build?(args: { gallery; gates; outDir }): Promise<void>; // node-side: copies runtime assets
+  loadGallery(g: GalleryJson, opts?: { baseUrl?: string }): Promise<void>;
+  loadFromNostr(naddr: string, opts?: { relays?: string[]; timeoutMs?: number }): Promise<GalleryJson>; // M2
+  layout(works: Work[], opts?: { seed?: string; style?: 'dungeon' }): Layout;   // deterministic: same seed → same rooms
+  addGates(gates: { id: string; naddr?: string; url?: string; name?: string; thumbnail?: string }[]): void;
+  mount(el: HTMLElement, opts: { mode: 'calm'|'game'; onWorkClick(w: Work): void; onGateEnter(g): void; onZap?(w: Work): void }): void;
+  build?(args: { gallery; gates; outDir }): Promise<void>; // node-side static export
 }
-type Layout = { rooms: { id; bounds }[]; placements: { workId; roomId; wall; position: [x,y,z]; sizeM: [w,h] }[]; gateSlots: { position; roomId }[] };
+type Layout = { rooms:{id;bounds}[]; placements:{workId;roomId;wall;position:[x,y,z];sizeM:[w,h]}[]; gateSlots:{position;roomId}[] };
 ```
-Works with `sizeIn` hang at true scale; unknown sizes use a default by aspect ratio (long side 1 m).
+- Works with a `size` hang at true relative scale. Unknown size defaults to a 1 m long side, by aspect ratio.
+- No dead-end hallways. Cleanup elves follow paint splats, then the wand, gates, and the buy scanner (game mode).
+- **Load from relay:** decode naddr → read the author's kind 10002 (fall back to the naddr relay hints, then defaults) → `REQ {kinds:[37440], authors:[pk], "#d":[d]}` → one batched `REQ {ids:[…kind-20 ids]}` plus `{kinds:[30402], authors:[pk], "#d":[…]}` → map to `GalleryJson` → check image hashes → `loadGallery`. Gate portals resolve each gate's manifest lazily for its name and thumbnail, and show the bare npub if it can't be fetched. A small client library (`nostr-tools` or NDK) lives in the viewer, not the engine core.
 
-## 10. Permissions & politeness
-- The artist runs the tool on **their own site** (CLI prints this; a `--i-own-this-site` confirm is TODO).
-- Honors robots.txt (own UA group, else `*`, longest-match, `*`/`$` wildcards). Identifies as `SlipgateGalleryImporter/0.1 (+url)`. Default 1 req/s, sequential.
-- Downloads only public images. Any 401/403 is skipped, no cookies/credentials ever sent, no login flows.
-- Note: Squarespace's default robots.txt **disallows `?format=json`**, so on stock Squarespace sites that path is skipped and we use the sitemap + HTML instead.
+## 5. Payments (non-custodial: we never hold funds)
+- **Zaps (NIP-57):** a Zap button per work and per gallery. The zap request (9734) carries `p` = artist, `a` = the work's 30402 address or the gallery's 37440 address, and `e` = the kind-20 id. That's how a receipt is tied to a work. Paid from the visitor's wallet via WebLN/NWC (NIP-47, e.g. Bitcoin Connect) or a QR code.
+- **Lightning address** (LUD-16) comes from the artist's kind 0 `lud16`. **Recommended:** a Lightning address served by the artist's own **BTCPay Server** (NIP-05/zap plugin, to verify), so every zap and Lightning tip lands in BTCPay's books too.
+- **Sales:** the Buy button opens a BTCPay invoice (Greenfield API / payment link) with `orderId`/`itemCode` = work id and metadata `{gallery, work, naddr}`, or a link to the artist's existing shop (`shopUrl`). **Fiat checkout stays on the artist's existing site** (Squarespace/Shopify). We don't process cards.
+- **Referral splits (optional, artist-set %, default small):** a visitor who arrives through a gate (`?ref=relaygate&from=<gallery d>`) can split a zap with the gate-linking artist via NIP-57 `zap` split tags (wallet support varies) or a second payment. For BTCPay sales, the split is a payout from the artist's own BTCPay (manual or plugin). Attribution happens client-side and is spoofable, so it's trust-based.
+- Link tagging: gates and painting links carry `?ref=relaygate&from=<id>[&work=<id>]`. No cookies, no pixels of our own.
 
-## 11. Future: room splats (design note, no code)
-"Try it on my wall": the visitor films their room on a phone → Gaussian splat (Scaniverse, Polycam, Luma, Postshot) → a browser viewer (three.js + Spark or GaussianSplats3D) loads the `.ply/.splat/.spz`.
-- **Pick paintings** from any gallery in the network (directory.json → gallery.json) and hang them at true size.
-- **Scale calibration**: LiDAR/ARKit captures are already metric, so use them as they are. Otherwise the user marks a known length (default prompt: a door = 80 in) and we store `scale` (scene units → metres) in `room.json`.
-- **Wall picking**: tap → raycast against splat points → RANSAC plane fit on nearby points → wall normal + up vector. The painting snaps flush and at eye height (57 in center by default), and can be dragged on the plane.
-- **Sizes** come from `gallery.json` `works[].sizeIn` (inches). This makes **real size a required field** for a work to be room-hangable. Works without it are shown but disabled ("size unknown").
-- **"View in my room"** link on each painting page/panel: `…/room/?gallery=<url>&work=<id>`.
-- **Privacy**: the room file stays on the user's device (opened via file picker, IndexedDB cache) or their own storage URL. It is never uploaded to us by default. `room.json` = `{ splatUrl|local, scale, walls:[{point,normal}], hung:[{gallery, workId, wall, pos}] }`.
-- **Buy links**: each hung painting keeps its `page`/`shopUrl` with `?ref=slipgate&from=room`.
+## 6. Accounting and records
+**Rule: no payment skips the books.** Every zap receipt and every sale becomes a ledger entry.
 
-## 12. Bitcoin-native design
-- **License**: MIT. Public repo later, not now (local git only for now).
-- **Gate directory on Nostr** (replaces/augments §5): each gallery publishes its slipgate.json as a *parameterized replaceable event* (likely kind 30078 or a new 3xxxx kind, with `d`=gallery id: **research**) signed by the artist's npub. Viewers discover gates by querying a few public relays, and §5's directory.json / plain `slipgate.json` stays as a fallback. We run no central server. The signing UX for non-technical artists (NIP-07 browser extension vs. nsec in CLI vs. NIP-46 remote signer) needs **research**.
-- **Payments**: `gallery.json.artist.lightningAddress` (LUD-16). Painting panels offer **zap** (NIP-57; the zap request can tag the work via an `a`/`r` tag, exact tagging is **research**). Gates offer a tip. Checkout = link to the artist's own BTCPay Server store, a Lightning invoice/LNURL-pay, or their existing shop (`availability.shopUrl`). We never touch funds.
-- **Referral splits** (optional, artist-set %): when a visitor arrives via `?ref=slipgate&from=<id>` and zaps/buys, the client pays the referring gallery's Lightning address its share directly, as a second payment from the visitor's wallet or zap splits (NIP-57 `zap` tag weights, **research** wallet support). For BTCPay sales, a split needs a server-side payout by the artist's own BTCPay (plugin? **research**). Non-custodial throughout. Honest limits: client-side referral attribution is trust-based and spoofable, so keep the default share small (**open question**).
-- **Identity**: `artist.npub` (+ optional `artist.nip05`, verified by fetching `/.well-known/nostr.json` on the artist's own domain, which also proves domain ownership for the directory).
-- Schema additions: `artist: { name, siteUrl, npub?, nip05?, lightningAddress?, btcpayUrl?, referralSharePct? }`.
+**Capture** (`relaygate ledger sync`, a long-running service or a cron job):
+- **Zaps:** subscribe on the artist's relays and the relays named in their zap requests to `{kinds:[9735], "#p":[artist-pk]}`. Validate each receipt per NIP-57 (the receipt's pubkey = the LNURL server's `nostrPubkey`, and the bolt11 amount = the zap request amount). Read the work from the embedded request's `a`/`e` tags.
+- **BTCPay:** a webhook (`InvoiceSettled`, `InvoicePaymentSettled`) plus a Greenfield API backfill. BTCPay is the preferred source of truth when it is used, because it also catches Lightning payments that never produce a zap receipt.
+- **Reconcile:** dedupe by payment hash (zap receipt bolt11 ↔ BTCPay invoice). `relaygate ledger check` lists receipts with no BTCPay match and vice versa. Manual entries cover off-Nostr sales (cash, card through the artist's site).
 
-## 13. Open questions
-- Q1 (TJ): Which pages count as "works" on tjm.art: originals only, or also book-art, prints, murals? There are 366 /products/ pages, including archived works.
-- Q2 (TJ): For Squarespace sites the stock robots.txt blocks `?format=json`. Is HTML-only acceptable, or should the artist (as site owner) be allowed `--allow-own-json`?
-- Q3 (TJ): Is UTM in addition to `ref/from` OK, or keep it to `ref/from` only?
-- Q4 (TJ): Who runs the directory repo / domain (slipgate.art? tjm.art/slipgate)?
-- Q5 (Studio manager): Package name and how core ships (npm package vs. vendored `engine/` folder)? Is the §9 interface acceptable? Who computes layout?
-- Q6 (Studio manager): Image budget: max texture size / count per room (we download ~2500 px).
-- Q8 (TJ): Default referral %, and should it apply to sales (needs artist-side BTCPay automation) or zaps only at first?
-- Q9 (TJ): Which relays to default to? Should the directory event kind be custom or reuse an existing NIP?
-- Q7: Portfolio sites (e.g. chasetoole) have many images per project with filename-only alts. Should one work = one project (cover image) or every image?
+**Entry** (append-only `ledger/entries.jsonl`, never edited; corrections are reversing entries):
+`{ id, receivedAt (ISO, UTC), type: zap|sale|tip|refund|referral-out, amountSats, amountMsat, usdValue, btcUsdRate, rateSource, rateTime, workId|null, galleryD, workTitle, paymentHash, bolt11|null, btcpayInvoiceId|null, zapReceiptId|null, payerNpub|null, memo, category (income account), taxable: true, salesTax: {jurisdiction, rate, amount}|null, buyerCountry|null, fee: {sats, usd} }`
+- **Required for every entry:** `amountSats`, `usdValue` at the time received (the BTCPay invoice rate, or for direct zaps the BTC/USD rate at `receivedAt` from a configured source, stored with source and time), and `workId` (null only for gallery-level tips, labeled as such).
+- Tax fields: income category, sales-tax fields for physical sales (rate per jurisdiction, set by the artist), fees, and USD basis. These support a sole proprietor's Schedule C and Bitcoin cost basis for later disposal. **We don't give tax advice. TJ's accountant confirms the treatment.**
 
-## Decision (TJ, Oct 18 2026)
-For portfolio sites, every image counts as its own work (not one cover per project).
+**Exports and connectors:**
+| Target | How | Why this one |
+|---|---|---|
+| CSV | `ledger export --csv` (generic, plus a QBO bank-feed CSV layout) | Opens anywhere; the accountant's fallback |
+| **QuickBooks Online** | `ledger connect qbo`: OAuth2 against the Intuit Accounting API, posting Sales Receipts in USD to a "Bitcoin (sats)" clearing/asset account, with the work in the line description | What most US accountants use (Bookkeeper's requirement) |
+| **GnuCash** | CSV in GnuCash's transaction-import layout (plus an optional QIF) | The most widely used open-source desktop books. Native multi-commodity support (USD + BTC) |
+| **Akaunting** | REST API (income transactions with an item = work) or CSV import | Open-source web books with invoicing, for artists who want a browser app |
+| **Beancount** (and ledger/hledger) | Plain-text journal: `ledger export --beancount`, with `--ledger` from the same generator | Diffable, auditable, git-friendly, Fava UI. The best match for open-source and self-sovereign users |
+| ERPNext | Not in v1 | A full ERP is too heavy for one artist. The CSV covers it |
+
+**Privacy:** zap receipts are public on relays, but the ledger is local only (the artist's machine or their own server) and never uploaded by Relay Gate. Payer npubs and buyer details from BTCPay are stored only if the artist enables it, and exports leave them out by default (`--include-payers` to opt in). Private/anonymous zaps are recorded by amount only. QBO tokens are stored in the OS keychain, never in the repo.
+
+## 7. Room splats (later, M5)
+"Try it on my wall": the visitor scans their room on a phone (Scaniverse/Polycam/Luma) into a Gaussian splat (`.ply/.splat/.spz`), viewed in three.js with Spark or GaussianSplats3D. Pick works from any gallery (via §3/§4), then hang them at **true size**: a work without `size` is shown but can't be hung. Scale comes from LiDAR captures (already metric), or the visitor marks a known length (door = 80 in). Wall pick = tap → raycast → RANSAC plane fit → the painting snaps flush at 57 in center height. `room.json = {splat, scale, walls, hung:[{naddr, workId, wall, pos}]}`. **Privacy:** the room file stays on the device (file picker + IndexedDB) and is never uploaded. Buy/zap links carry `from=room`.
+
+## 8. Open-source plan
+- **License:** MIT. **Repo:** public (needed for OpenSats, see Q1). Owner: TJ Murphy.
+- **Layout:** `bin/cli.js` · `src/importer.js` `src/http.js` (built) · `src/publish/` (event builders, Blossom upload, NIP-46 client) · `src/ledger/` (capture, store, exports, `connectors/{qbo,akaunting}`) · `viewer/` (web viewer + NIP-89 handler + NIP-07 publisher page) · `nips/relaygate-galleries.md` (draft NIP) · `docs/` (artist guide, EN/ES) · `test/` (fixtures, relay mock).
+- **Milestones** (effort = one part-time developer, rough):
+  | M | Deliverable | Effort |
+  |---|---|---|
+  | M0 | Site importer → `gallery.json` (**done**) | — |
+  | M1 | Rename code; `review` step; Nostr publish (kinds 37440/20/30402, Blossom, NIP-46/07); draft NIP | 3 wk |
+  | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback | 4 wk (+ engine core) |
+  | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV | 3–4 wk |
+  | M4 | Connectors: QBO, GnuCash, Akaunting, Beancount/ledger; reconcile; artist docs | 3–4 wk |
+  | M5 | Room splats (§7) | 5–6 wk, separate funding |
+- **Permissions & politeness** (unchanged): run it only on your own site; honor robots.txt (own UA group, else `*`); 1 req/s; public images only; never send cookies or credentials; skip 401/403.
+
+## 9. OpenSats fit (liftable draft: TJ, rewrite in your own words before submitting)
+From Opportunities' funding research notes (Oct 18 2026): one form covers the General and Nostr funds. Requirements: FOSS license, public development, about one page, **2 references**, an **exactly 2-minute human-voiced video**, 90-day progress reports, budget in USD paid in BTC, part-time allowed, 3–12 months. Window: Oct–Nov 2026, **submit by Nov 30 2026**, review takes up to about 90 days. Verify the field names against the live form at opensats.org/apply.
+
+**Project name:** Relay Gate · **License:** MIT · **Repo:** (public URL, to create) · **Applicant:** TJ Murphy
+
+**Project description:** An open-source tool that turns any artist's website into a walkable 3D gallery published as signed Nostr events under the artist's own key. Galleries link to each other through "gates" (signed pointers between artists' keys), visitors zap or buy works over Lightning, and every payment lands in the artist's own books (BTCPay, QuickBooks, GnuCash, Akaunting, Beancount).
+
+**Project goals:**
+1. Decentralized art discovery: galleries and the links between artists live on relays, with no platform, directory server or algorithm in between.
+2. Artist sovereignty: the artist's key, their domain (NIP-05), their images (Blossom/own site) and their money (own Lightning address/BTCPay). Nothing is custodial and the nsec is never touched.
+3. Lightning adoption by working artists: zaps and sales that are as easy to account for as card sales, so artists (and their accountants) can say yes to Bitcoin.
+4. Reusable Nostr infrastructure: a draft NIP for galleries (kind 37440) and picture-event conventions for physical artworks (real size, medium, price via NIP-99).
+
+**How it helps Nostr and Bitcoin users:**
+- Nostr users get a new kind of content (spatial galleries) that opens from any NIP-89-aware client. Artworks also show up as ordinary kind-20 pictures in clients like Olas, and gates turn follow graphs into walkable art networks.
+- Artists get one command from website to Nostr, with no key handling (NIP-46/NIP-07), which onboards non-technical creators.
+- Bitcoin users get zaps tied to specific works, BTCPay checkout for originals, and optional referral splits that pay artists for sending visitors to each other.
+- Merchant acceptance: a ledger that records sats, USD value at receipt and the work for every payment, with exports to QuickBooks and open-source books. This removes the bookkeeping barrier that keeps small sellers off Lightning.
+
+**Timeline and milestones** (months from grant start; 6 months part-time):
+| Month | Milestone | Public deliverable |
+|---|---|---|
+| Before applying (by Nov 30 2026) | M0 + start of M1 | Public repo, working `npx relaygate <url>`, 3–5 real artist galleries |
+| 1–2 | M1 Nostr publish | Kinds 37440/20/30402 published via NIP-46/07; Blossom upload; draft NIP opened on nostr-protocol/nips |
+| 2–3 | M2 Load from relay | Web viewer opens naddr links; gates; NIP-89 handler; nsite/static fallback |
+| 4 | M3 Zaps and sales | NIP-57 per-work zaps, NWC, BTCPay invoices, referral splits; ledger capture + CSV |
+| 5–6 | M4 Books | QuickBooks Online, GnuCash, Akaunting and Beancount exports/connectors; artist guide in EN/ES; 90-day and final reports |
+| Later (separate funding) | M5 | Room splats |
+
+**Budget (PROPOSED ESTIMATES: TJ to confirm every figure):**
+| Item | Proposed |
+|---|---|
+| Development, part-time (~20 h/wk × 26 wk, about 520 h) | $24,000 ($4,000/mo × 6) |
+| Infrastructure: test relay, Blossom storage, BTCPay test server, domain (6 mo) | $900 |
+| Test sats for zap/sale/split testing | $300 |
+| Artist onboarding and Spanish localization (incl. El Salvador artists) | $1,800 |
+| **Total** | **$27,000** (paid in BTC) |
+
+**Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, and TJ's own gallery as the first live deployment. Add the commit history and links to live galleries.
+**Other funding:** none yet. Possible complements: Geyser crowdfund, Bitcoin for the Arts (exhibition side).
+**Still needed:** 2 references (Nostr devs or BTCPay/El Salvador community, Nostr-signed if possible) and the 2-minute video recorded in TJ's own voice.
+
+## 10. Open questions (for TJ unless noted)
+- Q1: OpenSats requires public development. Make the repo public before applying (and under which GitHub account/name)? This depends on the final name (#68).
+- Q2: Squarespace's stock robots.txt blocks `?format=json`. Is HTML-only OK, or should there be an `--allow-own-json` option for site owners?
+- Q3: UTM tags in addition to `ref/from`?
+- Q4: Default relays (2–3) and default Blossom server(s)?
+- Q5: Is the custom kind 37440 plus a draft NIP OK, or should we try to stay inside existing kinds only (NIP-51 picture sets + NIP-78)? Custom is cleaner; existing kinds avoid the NIP process.
+- Q6: Default referral % and whether it covers BTCPay sales (needs a payout step) or only zaps at first.
+- Q7: BTC/USD rate source for direct zaps (BTCPay's rate provider vs. a public exchange API), and whether zaps count as business income or gifts. Ask the accountant.
+- Q8 (Studio manager): How the engine core ships (npm vs. vendored), the texture budget per room, and whether the §4 interface (incl. `loadFromNostr` living in the viewer) is OK.
+- Q9: Confirm the budget figures in §9.
+
+## Decisions log
+- Oct 18 2026 (TJ): every image on the artist's site counts as its own work.
+- Oct 18 2026 (TJ): Nostr-first. the old working name is retired (game term with a registered trademark conflict). Working name Relay Gate.
+- Oct 18 2026 (Bookkeeper, #70): every zap/sale records sats, USD value at receipt and the work. Route through BTCPay when possible. Export to QuickBooks, GnuCash, Akaunting and Beancount. Owner: TJ Murphy, sole proprietor.
