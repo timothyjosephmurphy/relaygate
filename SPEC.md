@@ -165,31 +165,34 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 | 5–6 | M4 Books | QuickBooks Online, GnuCash, Akaunting and Beancount exports/connectors; artist guide in EN/ES; 90-day and final reports |
 | Later (separate funding) | M5 | Room splats |
 
-**Budget (PROPOSED ESTIMATES: TJ to confirm every figure):**
+**Budget (TJ approved the $27,000 total, Oct 18 2026):**
 | Item | Proposed |
 |---|---|
-| Development, part-time (~20 h/wk × 26 wk, about 520 h) | $24,000 ($4,000/mo × 6) |
+| Development, part-time (~20 h/wk × 26 wk, about 520 h) | $22,800 ($3,800/mo × 6) |
+| AI and compute (coding assistants, build/test runs, 6 mo) | $1,200 |
 | Infrastructure: test relay, Blossom storage, BTCPay test server, domain (6 mo) | $900 |
 | Test sats for zap/sale/split testing | $300 |
 | Artist onboarding and Spanish localization (incl. El Salvador artists) | $1,800 |
-| **Total** | **$27,000** (paid in BTC) |
+| **Grand total** | **$27,000** (paid in BTC) |
+
+**Duration and time commitment:** 6 months, 50% time (part-time).
+**Prior funding:** no. **Other current funding:** no.
 
 **Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, and TJ's own gallery as the first live deployment. Add the commit history and links to live galleries.
-**Other funding:** none yet. Possible complements: Geyser crowdfund, Bitcoin for the Arts (exhibition side).
+**Other funding:** none. Possible later complements: Geyser crowdfund, Bitcoin for the Arts (exhibition side).
 **Still needed:** 2 references (Nostr devs or BTCPay/El Salvador community, Nostr-signed if possible) and the 2-minute video recorded in TJ's own voice.
 
 ## 10. Open questions (for TJ unless noted)
-- Q1: OpenSats requires public development. Make the repo public before applying (and under which GitHub account/name)? This depends on the final name (#68).
 - Q2: Squarespace's stock robots.txt blocks `?format=json`. Is HTML-only OK, or should there be an `--allow-own-json` option for site owners?
 - Q3: UTM tags in addition to `ref/from`?
-- Q4: Default relays (2–3) and default Blossom server(s)?
+- Q4: Default Blossom server(s)? (Relays decided, see log.)
 - Q5: Is the custom kind 37440 plus a draft NIP OK, or should we try to stay inside existing kinds only (NIP-51 picture sets + NIP-78)? Custom is cleaner; existing kinds avoid the NIP process.
-- Q6: Default referral % and whether it covers BTCPay sales (needs a payout step) or only zaps at first.
-- Q7: BTC/USD rate source for direct zaps (BTCPay's rate provider vs. a public exchange API), and whether zaps count as business income or gifts. Ask the accountant.
+- Q7: BTC/USD rate source for direct zaps (BTCPay's rate provider vs. a public exchange API).
 - Q8 (Studio manager): How the engine core ships (npm vs. vendored), the texture budget per room, and whether the §4 interface (incl. `loadFromNostr` living in the viewer) is OK.
-- Q9: Confirm the budget figures in §9.
 
 ## Decisions log
 - Oct 18 2026 (TJ): every image on the artist's site counts as its own work.
 - Oct 18 2026 (TJ): Nostr-first. the old working name is retired (game term with a registered trademark conflict). Working name Relay Gate.
+- Oct 18 2026 (TJ): name is Relay Gate; public repo github.com/timothyjosephmurphy/relaygate. OpenSats: 6 months at 50%, no prior or other funding, $27,000 budget. Default relays: relay.damus.io, nos.lol, relay.primal.net. Referral default: 10% of zaps only; no BTCPay sale splits at first.
+- Oct 18 2026 (Bookkeeper): zaps are taxable business income, not gifts.
 - Oct 18 2026 (Bookkeeper, #70): every zap/sale records sats, USD value at receipt and the work. Route through BTCPay when possible. Export to QuickBooks, GnuCash, Akaunting and Beancount. Owner: TJ Murphy, sole proprietor.
