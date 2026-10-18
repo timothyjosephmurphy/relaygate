@@ -1,0 +1,7 @@
+User-agent: RelayGateImporter
+Disallow: /private/
+
+User-agent: *
+Disallow: /admin/
+Allow: /
+Sitemap: https://studio.example/sitemap.xml
