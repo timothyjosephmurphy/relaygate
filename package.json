@@ -1,0 +1,19 @@
+{
+  "name": "slipgate-gallery",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "slipgate-gallery": "bin/cli.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  }
+}
