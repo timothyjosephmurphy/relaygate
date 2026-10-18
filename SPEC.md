@@ -93,6 +93,17 @@ type Layout = { rooms:{id;bounds}[]; placements:{workId;roomId;wall;position:[x,
 - **Referral splits (optional, artist-set %, default small):** a visitor who arrives through a gate (`?ref=relaygate&from=<gallery d>`) can split a zap with the gate-linking artist via NIP-57 `zap` split tags (wallet support varies) or a second payment. For BTCPay sales, the split is a payout from the artist's own BTCPay (manual or plugin). Attribution happens client-side and is spoofable, so it's trust-based.
 - Link tagging: gates and painting links carry `?ref=relaygate&from=<id>[&work=<id>]`. No cookies, no pixels of our own.
 
+
+## 5.1 Provenance (physical originals)
+Reuse TJ's 2023 [LN_BasedArtFoundry](https://github.com/timothyjosephmurphy/LN_BasedArtFoundry) where practical. That repo is a personal Python pipeline (~580 LOC, Nov 2023): HEIC→JPG, deskew, perceptual hash + Imgur upload + image SHA256, then mint a **Taproot Asset** collectible via `tapcli` (metadata: title, sha256, phash, url), merge mint + hash tables, print labels, and tally LN wallet spend. It is **not** a library: no `requirements.txt`, incomplete `.gitignore`, and it needs a local bitcoind/lnd/tapd (`lncli`/`tapcli`), ImageMagick, and packages such as `imgurpython`/`imagehash`/opencv/pandas/reportlab. It will not run cleanly without that stack; mainnet minting spends real sats. Related: [timothyjosephmurphy/taro](https://github.com/timothyjosephmurphy/taro) is an Oct 2022 snapshot of Lightning Labs' Taro daemon (now `taproot-assets`) at commit `3204936` — **no TJ commits beyond upstream**, so treat current `lightninglabs/taproot-assets` as the daemon, not that fork.
+
+**Reuse plan (honest):**
+- **Per original:** a certificate of authenticity — either a Taproot Asset (heavier; API has moved since 2023) **or**, preferred for v1, a simpler **signed Nostr event** carrying the artwork image `sha256` (kind 20 already has `imeta`/`x`).
+- **Link** the certificate from the work's Nostr event and from the tjm.art product page; **transfer** to the buyer on sale; **tie** to BTCPay invoice + ledger entry (`workId`, payment hash).
+- Lift ideas (hash-as-identity, label/export flow), not the shell-out scripts as-is.
+
+**Effort:** **S** for Nostr-signed CoA + links + sale/ledger hooks (folds into M3); **M** if also reviving Taproot Asset mint/transfer against modern tapd. Secrets were committed under `secrets/` in LN_BasedArtFoundry — rotate those credentials; do not copy them here.
+
 ## 6. Accounting and records
 **Rule: no payment skips the books.** Every zap receipt and every sale becomes a ledger entry.
 
@@ -130,7 +141,7 @@ type Layout = { rooms:{id;bounds}[]; placements:{workId;roomId;wall;position:[x,
   | M0 | Site importer → `gallery.json` (**done**) | — |
   | M1 | Rename code; `review` step; Nostr publish (kinds 37440/20/30402, Blossom, NIP-46/07); draft NIP | 3 wk |
   | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback | 4 wk (+ engine core) |
-  | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV | 3–4 wk |
+  | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV; provenance CoA hooks (§5.1, Nostr-first) | 3–4 wk |
   | M4 | Connectors: QBO, GnuCash, Akaunting, Beancount/ledger; reconcile; artist docs | 3–4 wk |
   | M5 | Room splats (§7) | 5–6 wk, separate funding |
 - **Permissions & politeness** (unchanged): run it only on your own site; honor robots.txt (own UA group, else `*`); 1 req/s; public images only; never send cookies or credentials; skip 401/403.
@@ -177,7 +188,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 **Duration and time commitment:** 6 months, 50% time (part-time).
 **Prior funding:** no. **Other current funding:** no.
 
-**Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, and TJ's own gallery as the first live deployment. Add the commit history and links to live galleries.
+**Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, and TJ's own gallery as the first live deployment; also [LN_BasedArtFoundry](https://github.com/timothyjosephmurphy/LN_BasedArtFoundry) (2023 Taproot Asset CoA pipeline) and [taro](https://github.com/timothyjosephmurphy/taro) (2022 upstream Taro snapshot, no local commits). Add the commit history and links to live galleries.
 **Other funding:** none. Possible later complements: Geyser crowdfund, Bitcoin for the Arts (exhibition side).
 **Still needed:** 2 references (Nostr devs or BTCPay/El Salvador community, Nostr-signed if possible) and the 2-minute video recorded in TJ's own voice.
 
@@ -195,3 +206,4 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 - Oct 18 2026 (TJ): name is Relay Gate; public repo github.com/timothyjosephmurphy/relaygate. OpenSats: 6 months at 50%, no prior or other funding, $27,000 budget. Default relays: relay.damus.io, nos.lol, relay.primal.net. Referral default: 10% of zaps only; no BTCPay sale splits at first.
 - Oct 18 2026 (Bookkeeper): zaps are taxable business income, not gifts.
 - Oct 18 2026 (Bookkeeper, #70): every zap/sale records sats, USD value at receipt and the work. Route through BTCPay when possible. Export to QuickBooks, GnuCash, Akaunting and Beancount. Owner: TJ Murphy, sole proprietor.
+- Oct 18 2026 (TJ): reuse LN_BasedArtFoundry provenance work where practical.
