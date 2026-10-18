@@ -20,7 +20,7 @@ npx relaygate <url> [--out dir] [--name "Artist"] [--gate-to <npub|naddr|url>]..
 3. **Publish** (`--publish`, M1): upload images to Blossom (or keep the artist's site URLs), sign the events in §3 through the artist's signer (§2), and send them to the artist's relays (NIP-65) plus the defaults.
 4. **View**: any Relay Gate viewer opens `naddr1…` (or `https://viewer/#naddr1…`) and loads the gallery from relays (§4). With `--static`, the same folder also deploys to Cloudflare Pages, Netlify, GitHub Pages, an nsite (NIP-5A on Blossom), or `/relaygate/` on the artist's site, and can be embedded with an `<iframe>`.
 
-**First visit: "just the art."** It is a calm walk-through with no HUD. Click a painting to see its title, size, medium, and **View on artist's site**, **Zap**, **Buy** (§5). The game layer (cleanup elves after paint splats, wand, buy scanner, quests) is behind a "Play" toggle. Without WebGL you get a fallback grid of works.
+**First visit: "just the art."** It is a calm walk-through with no HUD. Click a painting to see its title, size, medium, and **View on artist's site**, **Zap**, **Buy** (§5), and **Certificate ✓** when a COA exists (§3.7). The game layer (cleanup elves after paint splats, wand, buy scanner, quests) is behind a "Play" toggle. Without WebGL you get a fallback grid of works.
 
 ## 2. Identity
 - **Artist = Nostr keypair.** The gallery's author is the artist's `npub`. A gate links two keys, not two domains.
@@ -37,6 +37,7 @@ npx relaygate <url> [--out dir] [--name "Artist"] [--gate-to <npub|naddr|url>]..
 | Gallery manifest | **kind 37440** (proposed, addressable, `d` = gallery id) | new draft NIP "Relay Gate galleries" | No existing kind models an ordered, spatial gallery with gates. NIP-51 picture sets (30006) don't carry layout or gates, and NIP-78 (30078) is app-private by design. 37440 is unregistered in the NIPs README as of Oct 18 2026; we claim it with the draft NIP. |
 | Each work | **kind 20** picture event | NIP-68 (+ NIP-94 `imeta` fields) | Works show up in picture-first clients (Olas etc.) for free. `imeta` carries url, `x` (sha256), `m`, `dim`, `alt`. |
 | Work for sale | **kind 30402** classified listing (`d` = work id) | NIP-99 | Standard addressable listing with `price` and `status` tags, so price and availability change without re-publishing the picture. |
+| Certificate of authenticity | **kind 37441** (proposed, addressable, `d` = work id) + kind **1040** timestamp attestation | draft NIP (with 37440) + **NIP-03** | Artist-signed COA for a physical original; OpenTimestamps anchors “existed by date X” without a Lightning/tapd node. |
 | Images | Blossom blob (sha256-addressed) or the artist's own URL | NIP-B7 (Blossom). NIP-96 is now unrecommended | Hash = identity, so any mirror works. The viewer checks `x` against the downloaded bytes. |
 | Gates | `a` tags in the manifest → other artists' `37440:<pubkey>:<d>` (shared as `naddr`) | NIP-01 / NIP-19 | A gate is a signed pointer from one artist to another. |
 | Viewer app | kind 31990 handler for kind 37440 | NIP-89 | Any client can offer "open in 3D". |
@@ -68,6 +69,17 @@ Publish to the artist's NIP-65 write relays plus 2–3 defaults (to decide, Q4).
 ### 3.6 `gallery.json` (local + static fallback)
 Kept from v0.1: `{ schema, generatedAt, artist:{name, siteUrl, npub, nip05, lud16, btcpayUrl, referralSharePct}, works:[{id, title, image, localImage, sha256, page, size, sizeIn:{w,h}|null, medium|null, year|null, availability:{status, price, shopUrl}, project, source}] }`. `publish` maps it 1:1 onto §3.1–3.3.
 
+
+### 3.7 Certificate of authenticity (kind 37441, proposed)
+Inspired by TJ's 2023 Taproot Assets certificate-of-authenticity prototype (photo hash + printed label + cost log), but **Nostr-first and node-free**: no bitcoind/LND/tapd, no Imgur. A COA is the artist's signed statement that a physical object is their original, plus who owns it now.
+
+- **Event:** addressable kind **37441** (`d` = work id), signed via NIP-46/07 (tool never sees the nsec). Same draft NIP as 37440. Tags: `e`/`a` → kind-20 work and 30402 listing; `x` (photo sha256); `phash`; `size`, `medium`, `year`; `edition` ("1/1"); `label` (random serial on the physical label); `p` = current owner (absent = artist).
+- **Bitcoin anchor:** stamp the COA event id with **OpenTimestamps**; publish a NIP-03 kind **1040** attestation when confirmed (`relaygate coa upgrade`). Public calendars; $0 marginal cost.
+- **Transfer on sale:** when the listing flips to `sold` (BTCPay, §5), re-publish the COA with `p` = buyer npub; tie to ledger (`workId`, payment hash). v1 = artist-issued transfers only (collector resale is Q9).
+- **Verify:** label QR → `https://<viewer>/#naddr1…`; check signature, NIP-05, OTS proof, image hash, and serial vs photo. Work panel gets a **Certificate ✓** link (§1).
+- **CLI:** `relaygate coa issue <work-id>` then verify page (M, ~2 wk, with M2); `coa transfer` on sale (S, ~1 wk, with M3). Optional later: `--anchor tapd` for artists who already run tapd — **not** in this grant.
+- **Honest limit:** proves the artist's key vouched for this photo/serial at time T, not that the object in hand is that photo. Absorb ~3 wk in existing development hours; **$27,000 budget unchanged**.
+
 ## 4. Engine interface and loading from relays
 The 3D engine/shared core is built separately (Studio manager). The interface below is the contract.
 ```ts
@@ -93,16 +105,6 @@ type Layout = { rooms:{id;bounds}[]; placements:{workId;roomId;wall;position:[x,
 - **Referral splits (optional, artist-set %, default small):** a visitor who arrives through a gate (`?ref=relaygate&from=<gallery d>`) can split a zap with the gate-linking artist via NIP-57 `zap` split tags (wallet support varies) or a second payment. For BTCPay sales, the split is a payout from the artist's own BTCPay (manual or plugin). Attribution happens client-side and is spoofable, so it's trust-based.
 - Link tagging: gates and painting links carry `?ref=relaygate&from=<id>[&work=<id>]`. No cookies, no pixels of our own.
 
-
-## 5.1 Provenance (physical originals)
-Reuse TJ's 2023 [LN_BasedArtFoundry](https://github.com/timothyjosephmurphy/LN_BasedArtFoundry) where practical. That repo is a personal Python pipeline (~580 LOC, Nov 2023): HEIC→JPG, deskew, perceptual hash + Imgur upload + image SHA256, then mint a **Taproot Asset** collectible via `tapcli` (metadata: title, sha256, phash, url), merge mint + hash tables, print labels, and tally LN wallet spend. It is **not** a library: no `requirements.txt`, incomplete `.gitignore`, and it needs a local bitcoind/lnd/tapd (`lncli`/`tapcli`), ImageMagick, and packages such as `imgurpython`/`imagehash`/opencv/pandas/reportlab. It will not run cleanly without that stack; mainnet minting spends real sats. Related: [timothyjosephmurphy/taro](https://github.com/timothyjosephmurphy/taro) is an Oct 2022 snapshot of Lightning Labs' Taro daemon (now `taproot-assets`) at commit `3204936` — **no TJ commits beyond upstream**, so treat current `lightninglabs/taproot-assets` as the daemon, not that fork.
-
-**Reuse plan (honest):**
-- **Per original:** a certificate of authenticity — either a Taproot Asset (heavier; API has moved since 2023) **or**, preferred for v1, a simpler **signed Nostr event** carrying the artwork image `sha256` (kind 20 already has `imeta`/`x`).
-- **Link** the certificate from the work's Nostr event and from the tjm.art product page; **transfer** to the buyer on sale; **tie** to BTCPay invoice + ledger entry (`workId`, payment hash).
-- Lift ideas (hash-as-identity, label/export flow), not the shell-out scripts as-is.
-
-**Effort:** **S** for Nostr-signed CoA + links + sale/ledger hooks (folds into M3); **M** if also reviving Taproot Asset mint/transfer against modern tapd. Secrets were committed under `secrets/` in LN_BasedArtFoundry — rotate those credentials; do not copy them here.
 
 ## 6. Accounting and records
 **Rule: no payment skips the books.** Every zap receipt and every sale becomes a ledger entry.
@@ -140,9 +142,9 @@ Reuse TJ's 2023 [LN_BasedArtFoundry](https://github.com/timothyjosephmurphy/LN_B
   |---|---|---|
   | M0 | Site importer → `gallery.json` (**done**) | — |
   | M1 | Rename code; `review` step; Nostr publish (kinds 37440/20/30402, Blossom, NIP-46/07); draft NIP | 3 wk |
-  | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback | 4 wk (+ engine core) |
-  | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV; provenance CoA hooks (§5.1, Nostr-first) | 3–4 wk |
-  | M4 | Connectors: QBO, GnuCash, Akaunting, Beancount/ledger; reconcile; artist docs | 3–4 wk |
+  | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback; COA issue + verify (§3.7, NIP-03) | 4 wk (+ engine core) |
+  | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV; COA transfer on sale (§3.7) | 3–4 wk |
+  | M4 | Connectors: QBO, GnuCash, Akaunting (CSV), Beancount/ledger; reconcile; artist docs | 3–4 wk |
   | M5 | Room splats (§7) | 5–6 wk, separate funding |
 - **Permissions & politeness** (unchanged): run it only on your own site; honor robots.txt (own UA group, else `*`); 1 req/s; public images only; never send cookies or credentials; skip 401/403.
 
@@ -157,7 +159,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 1. Decentralized art discovery: galleries and the links between artists live on relays, with no platform, directory server or algorithm in between.
 2. Artist sovereignty: the artist's key, their domain (NIP-05), their images (Blossom/own site) and their money (own Lightning address/BTCPay). Nothing is custodial and the nsec is never touched.
 3. Lightning adoption by working artists: zaps and sales that are as easy to account for as card sales, so artists (and their accountants) can say yes to Bitcoin.
-4. Reusable Nostr infrastructure: a draft NIP for galleries (kind 37440) and picture-event conventions for physical artworks (real size, medium, price via NIP-99).
+4. Reusable Nostr infrastructure: a draft NIP for galleries (kind 37440) and picture-event conventions for physical artworks (real size, medium, price via NIP-99, plus provenance/authenticity via kind 37441 and NIP-03).
 
 **How it helps Nostr and Bitcoin users:**
 - Nostr users get a new kind of content (spatial galleries) that opens from any NIP-89-aware client. Artworks also show up as ordinary kind-20 pictures in clients like Olas, and gates turn follow graphs into walkable art networks.
@@ -170,9 +172,9 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 |---|---|---|
 | Before applying (by Nov 30 2026) | M0 + start of M1 | Public repo, working `npx relaygate <url>`, 3–5 real artist galleries |
 | 1–2 | M1 Nostr publish | Kinds 37440/20/30402 published via NIP-46/07; Blossom upload; draft NIP opened on nostr-protocol/nips |
-| 2–3 | M2 Load from relay | Web viewer opens naddr links; gates; NIP-89 handler; nsite/static fallback |
-| 4 | M3 Zaps and sales | NIP-57 per-work zaps, NWC, BTCPay invoices, referral splits; ledger capture + CSV |
-| 5–6 | M4 Books | QuickBooks Online, GnuCash, Akaunting and Beancount exports/connectors; artist guide in EN/ES; 90-day and final reports |
+| 2–3 | M2 Load from relay | Web viewer opens naddr links; gates; NIP-89 handler; nsite/static fallback; COA issue + verify (NIP-03 timestamps) |
+| 4 | M3 Zaps and sales | NIP-57 per-work zaps, NWC, BTCPay invoices, referral splits; ledger capture + CSV; COA transfer on sale |
+| 5–6 | M4 Books | QuickBooks Online, GnuCash, Akaunting (CSV) and Beancount exports/connectors; artist guide in EN/ES; 90-day and final reports |
 | Later (separate funding) | M5 | Room splats |
 
 **Budget (TJ approved the $27,000 total, Oct 18 2026):**
@@ -188,7 +190,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 **Duration and time commitment:** 6 months, 50% time (part-time).
 **Prior funding:** no. **Other current funding:** no.
 
-**Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, and TJ's own gallery as the first live deployment; also [LN_BasedArtFoundry](https://github.com/timothyjosephmurphy/LN_BasedArtFoundry) (2023 Taproot Asset CoA pipeline) and [taro](https://github.com/timothyjosephmurphy/taro) (2022 upstream Taro snapshot, no local commits). Add the commit history and links to live galleries.
+**Prior work / proof:** a working site importer (robots.txt-respecting, JSON-LD/sitemap aware), this spec, TJ's own gallery as the first live deployment, and TJ's 2023 Taproot Assets certificate-of-authenticity prototype (ideas reused in §3.7; cite the cleaned public repo only after leaked credentials are rotated). Add the commit history and links to live galleries.
 **Other funding:** none. Possible later complements: Geyser crowdfund, Bitcoin for the Arts (exhibition side).
 **Still needed:** 2 references (Nostr devs or BTCPay/El Salvador community, Nostr-signed if possible) and the 2-minute video recorded in TJ's own voice.
 
@@ -199,6 +201,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 - Q5: Is the custom kind 37440 plus a draft NIP OK, or should we try to stay inside existing kinds only (NIP-51 picture sets + NIP-78)? Custom is cleaner; existing kinds avoid the NIP process.
 - Q7: BTC/USD rate source for direct zaps (BTCPay's rate provider vs. a public exchange API).
 - Q8 (Studio manager): How the engine core ships (npm vs. vendored), the texture budget per room, and whether the §4 interface (incl. `loadFromNostr` living in the viewer) is OK.
+- Q9: COA kind 37441 in the gallery NIP or a separate NIP? Should collector-to-collector resale be in v1?
 
 ## Decisions log
 - Oct 18 2026 (TJ): every image on the artist's site counts as its own work.
@@ -206,4 +209,4 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 - Oct 18 2026 (TJ): name is Relay Gate; public repo github.com/timothyjosephmurphy/relaygate. OpenSats: 6 months at 50%, no prior or other funding, $27,000 budget. Default relays: relay.damus.io, nos.lol, relay.primal.net. Referral default: 10% of zaps only; no BTCPay sale splits at first.
 - Oct 18 2026 (Bookkeeper): zaps are taxable business income, not gifts.
 - Oct 18 2026 (Bookkeeper, #70): every zap/sale records sats, USD value at receipt and the work. Route through BTCPay when possible. Export to QuickBooks, GnuCash, Akaunting and Beancount. Owner: TJ Murphy, sole proprietor.
-- Oct 18 2026 (TJ): reuse LN_BasedArtFoundry provenance work where practical.
+- Oct 18 2026 (TJ): reuse TJ's 2023 Taproot Assets certificate-of-authenticity prototype ideas where practical (Nostr COA + OpenTimestamps; §3.7).
