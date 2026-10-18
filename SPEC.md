@@ -116,6 +116,8 @@ type Layout = { rooms:{id;bounds}[]; placements:{workId;roomId;wall;position:[x,
 
 **Entry** (append-only `ledger/entries.jsonl`, never edited; corrections are reversing entries):
 `{ id, receivedAt (ISO, UTC), type: zap|sale|tip|refund|referral-out, amountSats, amountMsat, usdValue, btcUsdRate, rateSource, rateTime, workId|null, galleryD, workTitle, paymentHash, bolt11|null, btcpayInvoiceId|null, zapReceiptId|null, payerNpub|null, memo, category (income account), taxable: true, salesTax: {jurisdiction, rate, amount}|null, buyerCountry|null, fee: {sats, usd} }`
+
+Referral payouts are booked gross (Bookkeeper, Oct 18 2026): the incoming zap or tip is recorded at its full amount as income, and the referrer's share is a separate `referral-out` entry booked as a "Referral commissions" expense, never as a smaller net tip.
 - **Required for every entry:** `amountSats`, `usdValue` at the time received (the BTCPay invoice rate, or for direct zaps the BTC/USD rate at `receivedAt` from a configured source, stored with source and time), and `workId` (null only for gallery-level tips, labeled as such).
 - Tax fields: income category, sales-tax fields for physical sales (rate per jurisdiction, set by the artist), fees, and USD basis. These support a sole proprietor's Schedule C and Bitcoin cost basis for later disposal. **We don't give tax advice. TJ's accountant confirms the treatment.**
 
@@ -210,3 +212,5 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 - Oct 18 2026 (Bookkeeper): zaps are taxable business income, not gifts.
 - Oct 18 2026 (Bookkeeper, #70): every zap/sale records sats, USD value at receipt and the work. Route through BTCPay when possible. Export to QuickBooks, GnuCash, Akaunting and Beancount. Owner: TJ Murphy, sole proprietor.
 - Oct 18 2026 (TJ): reuse TJ's 2023 Taproot Assets certificate-of-authenticity prototype ideas where practical (Nostr COA + OpenTimestamps; §3.7).
+
+- Oct 18 2026 (Bookkeeper): book referral payouts gross: full tip as income plus a separate "Referral commissions" expense.
