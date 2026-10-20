@@ -1,15 +1,17 @@
 # Relay Gate
 
-Turn your art website into a walkable 3D gallery, published on **Nostr** under your own key.
+Relay Gate is an MIT-licensed project in development for turning artist websites into portable, walkable galleries. The repository currently contains the site importer and its tests.
 
+Run the local importer with Node.js 20 or newer:
+
+```sh
+npm ci
+node bin/cli.js https://your-site.example --out ./gallery
+npm test
 ```
-npx relaygate https://your-site.example --publish
-```
 
-- **Import:** reads your own site (respecting robots.txt) and treats every image as a work, hung at true relative size.
-- **Publish:** signed Nostr events (gallery manifest + picture events + NIP-99 listings) via your NIP-46/NIP-07 signer. Relay Gate never sees your nsec.
-- **Gates:** link your gallery to other artists' galleries by their keys. Discovery happens over relays, with no central server.
-- **Get paid:** zaps (NIP-57) and BTCPay invoices go straight to you. Card checkout stays on your existing shop.
-- **Books:** every zap and sale is logged with sats, USD value and the work, and exports to QuickBooks Online, GnuCash, Akaunting and Beancount.
+Review the imported works before using them. Website metadata may be incomplete; a public image URL does not establish ownership or permission to publish it.
 
-Status: the site importer works (M0); Nostr publishing is next. Full design: [SPEC.md](SPEC.md). License: MIT. Maintainer: TJ Murphy.
+The proposed Nostr design gives artists signed gallery identities, gates to other artists, and relay-based discovery. Visitors should be able to open a gallery without an account. Nostr publishing, viewer integration, Lightning zaps, BTCPay reconciliation, certificates, and bookkeeping exports are planned, not implemented features. See [SPEC.md](SPEC.md) for the protocol choices, delivery plan, and open questions.
+
+Relay Gate has not launched. Maintainer: TJ Murphy. License: [MIT](LICENSE).
