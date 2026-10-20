@@ -6,7 +6,12 @@
   "scripts": {
     "test": "node --test test/*.test.js"
   },
-  "keywords": ["nostr", "gallery", "art", "importer"],
+  "keywords": [
+    "nostr",
+    "gallery",
+    "art",
+    "importer"
+  ],
   "author": "TJ Murphy",
   "license": "MIT",
   "type": "module",
@@ -14,9 +19,10 @@
     "relaygate": "bin/cli.js"
   },
   "dependencies": {
-    "cheerio": "^1.2.0"
+    "cheerio": "^1.2.0",
+    "nostr-tools": "2.25.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   }
 }
