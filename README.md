@@ -13,3 +13,5 @@ npx relaygate https://your-site.example --publish
 - **Books:** every zap and sale is logged with sats, USD value and the work, and exports to QuickBooks Online, GnuCash, Akaunting and Beancount.
 
 Status: the site importer works (M0); Nostr publishing is next. Full design: [SPEC.md](SPEC.md). License: MIT. Maintainer: TJ Murphy.
+
+Local preparation: [artist setup guide](docs/artist-setup.md) covers the downloadable browser editor, review and resume, unsigned 2D gallery export, and own-site installation. Website-import and signed-gallery callbacks, shared 3D engine integration, hosting and human acceptance remain separate steps.
