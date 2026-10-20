@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teach my guide - local development example</title>
+  <style>
+    :root { font: 18px/1.5 system-ui, sans-serif; color: #222; background: #faf9f5; }
+    body { max-width: 54rem; margin: auto; padding: 1.5rem; }
+    h1, h2, h3 { line-height: 1.2; }
+    button, input, select, textarea { font: inherit; }
+    button { min-height: 44px; margin: .35rem .5rem .35rem 0; padding: .5rem .8rem; }
+    textarea, input[type=text], select { display: block; width: 100%; box-sizing: border-box; padding: .4rem; }
+    label { display: block; margin-block: 1rem; }
+    audio { display: block; width: 100%; margin-block: 1rem; }
+    :focus-visible { outline: 3px solid #985000; outline-offset: 4px; }
+    [role=status] { border-left: 4px solid #315c52; padding: .75rem; background: #edf2ef; }
+    .story-transcript { white-space: pre-wrap; }
+    section { margin-block: 2rem; border-top: 1px solid #b5b6af; padding-top: 1rem; }
+    p, h3 { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Teach my guide</h1>
+  <p>Local development example. These five paintings are synthetic placeholders. This page does not sign or publish anything.</p>
+  <p>Choose a local gallery config, or use the five demo works. No microphone permission is requested until you choose Start recording.</p>
+  <label>Gallery config <input id="catalog" type="file" accept=".json,application/json"></label>
+  <button id="demo" type="button">Teach the five demo works</button>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="teaching" aria-label="Artist teaching controls"></section>
+  <section aria-label="Visitor preview">
+    <h2>Visitor preview</h2>
+    <label>Painting <select id="visitor-work"></select></label>
+    <button id="preview" type="button" disabled>Preview the approved story</button>
+    <div id="visitor"></div>
+  </section>
+  <script type="module">
+    import { mountTeachingPanel, mountVisitorStory } from '../src/narration-panel.js';
+    import { exportApprovedStories } from '../src/narration.js';
+    const get = id => document.getElementById(id);
+    let teacher, visitor;
+    async function start(gallery) {
+      await teacher?.dispose(); visitor?.dispose();
+      teacher = await mountTeachingPanel(get('teaching'), { gallery });
+      get('visitor-work').replaceChildren();
+      for (const work of gallery.works) {
+        const option = document.createElement('option'); option.value = work.id; option.textContent = work.title; get('visitor-work').append(option);
+      }
+      get('preview').disabled = false;
+      get('message').textContent = 'Teaching mode is ready. Select a painting and confirm its title before recording.';
+    }
+    const report = error => { get('message').textContent = error.message; };
+    get('demo').addEventListener('click', () => start({ schema: 'relaygate/gallery/1', artist: { name: 'Demo artist' }, works: Array.from({ length: 5 }, (_, i) => ({ id: `demo-${i + 1}`, title: `Demo painting ${i + 1}` })) }).catch(report));
+    get('catalog').addEventListener('change', async event => {
+      try { const file = event.target.files[0]; if (!file) return; if (file.size > 8 * 1024 * 1024) throw new Error('Gallery config exceeds 8 MiB'); await start(JSON.parse(await file.text())); } catch (error) { report(error); }
+    });
+    get('preview').addEventListener('click', async () => {
+      try { visitor?.dispose(); visitor = await mountVisitorStory(get('visitor'), JSON.stringify(exportApprovedStories(teacher.snapshot())), get('visitor-work').value); } catch (error) { report(error); }
+    });
+    window.addEventListener('pagehide', () => { teacher?.dispose(); visitor?.dispose(); });
+  </script>
+</body>
+</html>
