@@ -1,0 +1,9 @@
+{
+  "schema": "relaygate/certificate-proofs/1",
+  "mode": "demo",
+  "artist": { "name": "Ada Example" },
+  "artworks": [
+    { "id": "blue-field", "title": "Blue Field", "year": "2026", "medium": "Oil on linen", "dimensions": { "width": 60, "height": 40, "unit": "cm" }, "edition": "Original", "reviewed": true },
+    { "id": "quiet-water", "title": "Quiet Water", "year": "2026", "medium": "Ink on paper", "reviewed": true }
+  ]
+}
