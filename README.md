@@ -13,3 +13,5 @@ npx relaygate https://your-site.example --publish
 - **Books:** every zap and sale is logged with sats, USD value and the work, and exports to QuickBooks Online, GnuCash, Akaunting and Beancount.
 
 Status: the site importer works (M0); Nostr publishing is next. Full design: [SPEC.md](SPEC.md). License: MIT. Maintainer: TJ Murphy.
+
+Planning: [two adjacent-market experiments](docs/adjacent-market-experiments.md) and [blank evidence records](docs/adjacent-market-records.md) for review after the core artist pilot. No partner demand or commercial commitment is claimed.
