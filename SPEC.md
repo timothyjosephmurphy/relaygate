@@ -37,7 +37,7 @@ npx relaygate <url> [--out dir] [--name "Artist"] [--gate-to <npub|naddr|url>]..
 | Gallery manifest | **kind 37440** (proposed, addressable, `d` = gallery id) | new draft NIP "Relay Gate galleries" | No existing kind models an ordered, spatial gallery with gates. NIP-51 picture sets (30006) don't carry layout or gates, and NIP-78 (30078) is app-private by design. 37440 is unregistered in the NIPs README as of Oct 18 2026; we claim it with the draft NIP. |
 | Each work | **kind 20** picture event | NIP-68 (+ NIP-94 `imeta` fields) | Works show up in picture-first clients (Olas etc.) for free. `imeta` carries url, `x` (sha256), `m`, `dim`, `alt`. |
 | Work for sale | **kind 30402** classified listing (`d` = work id) | NIP-99 | Standard addressable listing with `price` and `status` tags, so price and availability change without re-publishing the picture. |
-| Certificate of authenticity | **kind 37441** (proposed, addressable, `d` = work id) + kind **1040** timestamp attestation | draft NIP (with 37440) + **NIP-03** | Artist-signed COA for a physical original; OpenTimestamps anchors “existed by date X” without a Lightning/tapd node. |
+| Certificate of authenticity | **kind 37441** (proposed, addressable, `d` = work id) + OpenTimestamps proof in an `ots` tag (Relay Gate rules; optional NIP-03 kind 1040 for interop) | draft NIP (with 37440) + OpenTimestamps | Artist-signed COA for a physical original; OpenTimestamps anchors “existed by date X” without a Lightning/tapd node. |
 | Images | Blossom blob (sha256-addressed) or the artist's own URL | NIP-B7 (Blossom). NIP-96 is now unrecommended | Hash = identity, so any mirror works. The viewer checks `x` against the downloaded bytes. |
 | Gates | `a` tags in the manifest → other artists' `37440:<pubkey>:<d>` (shared as `naddr`) | NIP-01 / NIP-19 | A gate is a signed pointer from one artist to another. |
 | Viewer app | kind 31990 handler for kind 37440 | NIP-89 | Any client can offer "open in 3D". |
@@ -74,9 +74,9 @@ Kept from v0.1: `{ schema, generatedAt, artist:{name, siteUrl, npub, nip05, lud1
 Inspired by TJ's 2023 Taproot Assets certificate-of-authenticity prototype (photo hash + printed label + cost log), but **Nostr-first and node-free**: no bitcoind/LND/tapd, no Imgur. A COA is the artist's signed statement that a physical object is their original, plus who owns it now.
 
 - **Event:** addressable kind **37441** (`d` = work id), signed via NIP-46/07 (tool never sees the nsec). Same draft NIP as 37440. Tags: `e`/`a` → kind-20 work and 30402 listing; `x` (photo sha256); `phash`; `size`, `medium`, `year`; `edition` ("1/1"); `label` (random serial on the physical label); `p` = current owner (absent = artist).
-- **Bitcoin anchor:** stamp the COA event id with **OpenTimestamps**; publish a NIP-03 kind **1040** attestation when confirmed (`relaygate coa upgrade`). Public calendars; $0 marginal cost.
+- **Bitcoin anchor:** stamp the COA's first event id (raw 32 bytes) with **OpenTimestamps** via public calendars ($0 marginal cost). When confirmed, `relaygate coa upgrade` re-publishes the COA with `["ots-target", <id>]` and `["ots", <base64 proof>, <height>]` (or a Blossom hash). Verification rules are defined in our draft NIP (digest = event id; same pubkey and `d`; headers from ≥2 sources; pending attestations ignored). A NIP-03 kind 1040 copy is optional for interop, since NIP-03 is marked `unrecommended` upstream (nips commits 861675b, 5491bd5, May 2026).
 - **Transfer on sale:** when the listing flips to `sold` (BTCPay, §5), re-publish the COA with `p` = buyer npub; tie to ledger (`workId`, payment hash). v1 = artist-issued transfers only (collector resale is Q9).
-- **Verify:** label QR → `https://<viewer>/#naddr1…`; check signature, NIP-05, OTS proof, image hash, and serial vs photo. Work panel gets a **Certificate ✓** link (§1).
+- **Verify:** label QR → `https://<viewer>/#naddr1…`; check signature, NIP-05, OTS proof (per our draft NIP rules: digest = COA id, Bitcoin headers from ≥2 sources), image hash, and serial vs photo. Work panel gets a **Certificate ✓** link (§1).
 - **CLI:** `relaygate coa issue <work-id>` then verify page (M, ~2 wk, with M2); `coa transfer` on sale (S, ~1 wk, with M3). Optional later: `--anchor tapd` for artists who already run tapd — **not** in this grant.
 - **Honest limit:** proves the artist's key vouched for this photo/serial at time T, not that the object in hand is that photo. Absorb ~3 wk in existing development hours; **$27,000 budget unchanged**.
 
@@ -144,7 +144,7 @@ Referral payouts are booked gross (Bookkeeper, Oct 18 2026): the incoming zap or
   |---|---|---|
   | M0 | Site importer → `gallery.json` (**done**) | — |
   | M1 | Rename code; `review` step; Nostr publish (kinds 37440/20/30402, Blossom, NIP-46/07); draft NIP | 3 wk |
-  | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback; COA issue + verify (§3.7, NIP-03) | 4 wk (+ engine core) |
+  | M2 | Viewer loads a gallery from relays; gates by naddr; NIP-89 handler; static/nsite fallback; COA issue + verify (§3.7, OpenTimestamps proof in COA tag) | 4 wk (+ engine core) |
   | M3 | Zaps (NIP-57, NWC), BTCPay invoices, referral splits; ledger capture + CSV; COA transfer on sale (§3.7) | 3–4 wk |
   | M4 | Connectors: QBO, GnuCash, Akaunting (CSV), Beancount/ledger; reconcile; artist docs | 3–4 wk |
   | M5 | Room splats (§7) | 5–6 wk, separate funding |
@@ -161,7 +161,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 1. Decentralized art discovery: galleries and the links between artists live on relays, with no platform, directory server or algorithm in between.
 2. Artist sovereignty: the artist's key, their domain (NIP-05), their images (Blossom/own site) and their money (own Lightning address/BTCPay). Nothing is custodial and the nsec is never touched.
 3. Lightning adoption by working artists: zaps and sales that are as easy to account for as card sales, so artists (and their accountants) can say yes to Bitcoin.
-4. Reusable Nostr infrastructure: a draft NIP for galleries (kind 37440) and picture-event conventions for physical artworks (real size, medium, price via NIP-99, plus provenance/authenticity via kind 37441 and NIP-03).
+4. Reusable Nostr infrastructure: a draft NIP for galleries (kind 37440) and picture-event conventions for physical artworks (real size, medium, price via NIP-99, plus provenance/authenticity via kind 37441 with a specified OpenTimestamps binding (digest, tag format, verification rules), written so it can feed a future NIP-03 update).
 
 **How it helps Nostr and Bitcoin users:**
 - Nostr users get a new kind of content (spatial galleries) that opens from any NIP-89-aware client. Artworks also show up as ordinary kind-20 pictures in clients like Olas, and gates turn follow graphs into walkable art networks.
@@ -174,7 +174,7 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 |---|---|---|
 | Before applying (by Nov 30 2026) | M0 + start of M1 | Public repo, working `npx relaygate <url>`, 3–5 real artist galleries |
 | 1–2 | M1 Nostr publish | Kinds 37440/20/30402 published via NIP-46/07; Blossom upload; draft NIP opened on nostr-protocol/nips |
-| 2–3 | M2 Load from relay | Web viewer opens naddr links; gates; NIP-89 handler; nsite/static fallback; COA issue + verify (NIP-03 timestamps) |
+| 2–3 | M2 Load from relay | Web viewer opens naddr links; gates; NIP-89 handler; nsite/static fallback; COA issue + verify (OpenTimestamps proofs) |
 | 4 | M3 Zaps and sales | NIP-57 per-work zaps, NWC, BTCPay invoices, referral splits; ledger capture + CSV; COA transfer on sale |
 | 5–6 | M4 Books | QuickBooks Online, GnuCash, Akaunting (CSV) and Beancount exports/connectors; artist guide in EN/ES; 90-day and final reports |
 | Later (separate funding) | M5 | Room splats |
@@ -214,3 +214,4 @@ From Opportunities' funding research notes (Oct 18 2026): one form covers the Ge
 - Oct 18 2026 (TJ): reuse TJ's 2023 Taproot Assets certificate-of-authenticity prototype ideas where practical (Nostr COA + OpenTimestamps; §3.7).
 
 - Oct 18 2026 (Bookkeeper): book referral payouts gross: full tip as income plus a separate "Referral commissions" expense.
+- Oct 21 2026: found that NIP-03 (OpenTimestamps attestations) is marked unrecommended upstream (nips commits 861675b, 5491bd5; attack undisclosed). COA timestamping moved to an ots tag with our own verification rules; NIP-03 kind 1040 optional for interop only. See studio-tracker #249.
