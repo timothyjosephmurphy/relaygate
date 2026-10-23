@@ -69,6 +69,7 @@ describe('extractFromHtml JSON-LD', () => {
     assert.equal(w.medium, 'acrylic on canvas');
     assert.equal(w.year, 2021);
     assert.equal(w.size, '36 in × 24 in');
+    assert.deepEqual(w.sizeIn, { w: 36, h: 24 });
     assert.equal(w.availability?.price, '1200 USD');
     assert.match(w.source, /^json-ld:/);
   });
@@ -91,11 +92,11 @@ describe('extractFromHtml img fallback + skip attrs', () => {
 });
 
 describe('dedupeByPage', () => {
-  it('drops img candidates when the page already has json-ld', () => {
+  it('merges the same image while retaining other artwork on the same page', () => {
     const works = [
-      { title: 'A', page: 'https://ex/a', source: 'json-ld:Painting' },
-      { title: 'A img', page: 'https://ex/a', source: 'img' },
-      { title: 'B', page: 'https://ex/b', source: 'img' },
+      { title: 'A', image: 'https://ex/a.jpg', page: 'https://ex/a', source: 'json-ld:Painting' },
+      { title: 'A img', image: 'https://ex/a.jpg', page: 'https://ex/a', source: 'img' },
+      { title: 'B', image: 'https://ex/b.jpg', page: 'https://ex/a', source: 'img' },
     ];
     const out = dedupeByPage(works);
     assert.deepEqual(out.map(w => w.title), ['A', 'B']);
