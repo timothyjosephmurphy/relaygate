@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Relay Gate · Artist setup</title>
+<style>
+:root{font:17px/1.5 system-ui,sans-serif;color:#21352d;background:#f5f3ec}*{box-sizing:border-box}body{margin:0}header{padding:2.5rem max(1.25rem,calc((100vw - 76rem)/2));background:#153f34;color:#fff}header p{max-width:44rem;color:#dbe7df}h1{font:clamp(2rem,5vw,3.6rem)/1.1 Georgia,serif;margin:.25rem 0 1rem}h2{font:1.6rem/1.2 Georgia,serif}h3{margin-top:1.5rem}main{max-width:76rem;margin:auto;padding:1.25rem}.grid{display:grid;grid-template-columns:18rem 1fr;gap:1.25rem}.panel{background:#fff;border:1px solid #c6cec6;border-radius:.5rem;padding:1.25rem;margin-bottom:1.25rem}.step{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:#526c5b}label{display:block;margin:.8rem 0 .25rem;font-weight:600}input,textarea,select,button{font:inherit}input:not([type=checkbox]),textarea,select{width:100%;padding:.55rem;border:1px solid #839789;border-radius:.25rem;background:#fff;color:#21352d}textarea{min-height:5rem}button,.file-label{display:inline-block;cursor:pointer;padding:.6rem .9rem;border:1px solid #466c57;background:#e9f0e8;border-radius:.25rem;color:#163e2b;font-weight:600;margin:.5rem .25rem .25rem 0}.primary{background:#155640;color:white}button:disabled{opacity:.5;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #b96922;outline-offset:3px}small,.note{font-size:.88rem;color:#52645b}.checks label{font-weight:400;display:flex;gap:.7rem;align-items:start}.checks input{margin-top:.4rem}.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.triple{display:grid;grid-template-columns:1fr 1fr 5rem;gap:.6rem}#status{position:sticky;top:0;z-index:2;padding:1rem 1.25rem;background:#e9f0e8;border-bottom:1px solid #91ac96;white-space:pre-wrap}#status:empty{display:none}#status.error{background:#fff0e6;color:#7c2f09}#readiness{white-space:pre-wrap}#work-image{width:100%;max-height:18rem;object-fit:contain;background:#f5f3ec}#preview-frame{width:100%;height:70vh;border:1px solid #c6cec6}#work-list{height:22rem}code{overflow-wrap:anywhere}a{color:#194c76}.skip{position:absolute;left:-10000px}.skip:focus{left:1rem;top:1rem;padding:.5rem;background:white}details{margin:.8rem 0}summary{cursor:pointer;font-weight:600}footer{padding:1.25rem;text-align:center;color:#52645b}input[type=file]{font-size:.85rem}input[type=checkbox]{width:1.15rem;height:1.15rem;flex-shrink:0}@media(max-width:800px){.grid{grid-template-columns:1fr}#work-list{height:10rem}.row{grid-template-columns:1fr}header{padding:1.5rem}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style></head><body><a class="skip" href="#setup">Skip to setup</a>
+<header><p class="step" style="color:#b4cebf">Relay Gate · Local artist workspace</p><h1>Your artwork. Your website.</h1><p>Review a collection, save your progress, and take a gallery folder to your own host. No account, wallet or coding is needed to prepare this unsigned 2D gallery.</p></header>
+<div id="status" role="status" aria-live="polite"></div>
+<main id="setup"><section class="panel"><p class="step">1 · Start with your work</p><h2>Artist and images</h2><div class="row"><div><label for="artist-name">Artist name</label><input id="artist-name" maxlength="300" autocomplete="name"><label for="site-url">Existing website</label><input id="site-url" type="url" placeholder="https://your-website.example/"><button id="save-artist">Save artist details</button><button id="import-website">Import website candidates</button><p class="note">Website import needs the importer connection. The local editor always supports image files and saved gallery data.</p></div><div><label for="open-draft">Open draft or gallery JSON</label><input id="open-draft" type="file" accept=".json,application/json"><label for="add-images">Add your image files</label><input id="add-images" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple><p class="note">PNG, JPEG, GIF or WebP. Up to 8 MiB per image and 40 MiB total. Files stay in this browser until you choose a download.</p><label for="new-image-url">Or add a public image address</label><input id="new-image-url" type="url" placeholder="https://your-website.example/painting.jpg"><button id="add-url">Add image link</button></div></div></section>
+<section class="panel"><p class="step">2 · Review before sharing</p><h2>Choose and describe the artworks</h2><p>Imports can include portraits or event photos and filename titles. Include only the works you want to show. Physical dimensions can stay unknown.</p><div class="grid"><aside><label for="work-list">Artwork candidates</label><select id="work-list" size="12"></select><p id="work-count" class="note"></p><p class="note">Artwork changes save when you switch candidates. Download a draft before closing.</p><button id="save-draft">Download private draft</button><label for="versions">Earlier session version</label><select id="versions"></select><button id="restore-version" disabled>Restore earlier version</button><p class="note">Up to five metadata versions stay in this session. Download your draft before closing; no automatic browser storage is used.</p></aside><div><p id="empty">Add an image or open a gallery to start reviewing.</p><section id="work-editor" hidden><img id="work-image" alt="" hidden><label for="attach-image">Attach or replace this artwork’s local image</label><input id="attach-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><label for="title">Artwork title</label><input id="title" maxlength="500"><div class="row"><div><label for="medium">Medium</label><input id="medium" maxlength="300"></div><div><label for="year">Year</label><input id="year" maxlength="50"></div></div><label for="alt">Describe the image for visitors who cannot see it</label><textarea id="alt" maxlength="2000"></textarea><label>Physical size (optional; width × height)</label><div class="triple"><input id="width" aria-label="Physical width" type="number" min="0" step="any"><input id="height" aria-label="Physical height" type="number" min="0" step="any"><select id="units" aria-label="Physical units"><option value="in">inches</option><option value="cm">cm</option></select></div><div class="row"><div><label for="image-url">Public image address (optional with a local file)</label><input id="image-url" type="url"></div><div><label for="page-url">Artwork source page</label><input id="page-url" type="url"></div></div><label for="description">Artwork description</label><textarea id="description" maxlength="10000"></textarea><label for="story">Approved artist story (optional)</label><textarea id="story" maxlength="20000"></textarea><label for="rights">Image permission or license note</label><textarea id="rights" maxlength="2000" placeholder="For example: I own this photograph and permit display in this gallery."></textarea><div class="checks"><label><input id="included" type="checkbox">Include this work in my gallery</label><label><input id="reviewed" type="checkbox">I have reviewed this title, description and physical-size information</label><label><input id="rightsConfirmed" type="checkbox">I have permission to publish this image in my gallery</label></div><button id="save-work" class="primary">Save artwork changes</button><p id="provenance" class="note"></p></section></div></div></section>
+<section class="panel"><p class="step">3 · Connect and take it with you</p><h2>A gate to another gallery</h2><p>TJ’s supplied identity: <strong>TJ Murphy</strong> · <code>tj@tjm.art</code></p><details><summary>Public key used for the connection</summary><p><code>npub10m0uf224v7tly6k6h8gl6kkmuhmx7969gmudmmhqj5pv65e03r9sxsumee</code></p><p>This address is an identity hint. A current signed gallery location must be checked by the connected resolver.</p></details><button id="connect-tj">Find TJ’s signed gallery</button><p id="gate-status" class="note"></p><label for="gate-url">Or use an ordinary gallery address</label><input id="gate-url" type="url" placeholder="https://another-artist.example/gallery/"><button id="save-gate">Save unverified web link</button><p class="note">Blank removes the link. Another artist must separately agree to add a gate back to you.</p><h3>Preview and export</h3><p id="readiness"></p><button id="preview">Preview 2D gallery</button><button id="export-gallery" class="primary">Download gallery ZIP</button><p class="note">The ZIP contains only included, reviewed works. Images added as links remain remote; keep permitted local files for a dependable backup. Download your private draft separately to keep excluded candidates.</p></section>
+<section id="preview-panel" class="panel" hidden><h2>Local gallery preview</h2><p>2D preview only. Remote images may load from their existing sites. This does not create a hosted or signed gallery.</p><button id="close-preview">Close preview</button><iframe id="preview-frame" title="Local artwork gallery preview" sandbox=""></iframe></section>
+<section class="panel"><h2>Add it to your existing site</h2><label for="method">Installation route</label><select id="method"><option value="folder">Upload a static folder to my own hosting</option><option value="embed">Embed a gallery hosted at another address</option><option value="link">Add an ordinary gallery link</option><option value="managed">Arrange optional managed hosting</option></select><p class="note">Folder upload runs on your chosen host. An iframe displays a separately hosted gallery. Managed hosting is not included or provisioned here.</p><label for="gallery-url">The final HTTPS address supplied by your host</label><input id="gallery-url" type="url" placeholder="https://your-website.example/gallery/"><button id="make-snippet">Prepare installation text</button><label for="snippet">Copy this text into your website workflow</label><textarea id="snippet" readonly></textarea><details><summary>Squarespace and WordPress notes</summary><p>Squarespace currently requires Core, Plus or Advanced for JavaScript or iframe code blocks. A normal link is the fallback. WordPress.com permits iframe/custom-code features on supported paid plans with hosting features activated; it may require activating those features by installing a plugin. Self-hosted WordPress depends on the site’s roles, security settings and theme. Check your actual account before changing plans.</p><p><a href="https://support.squarespace.com/hc/en-us/articles/206543167-Add-custom-code-to-a-page-with-code-blocks" target="_blank" rel="noreferrer">Squarespace instructions</a> · <a href="https://wordpress.com/support/wordpress-editor/blocks/custom-html-block/" target="_blank" rel="noreferrer">WordPress.com instructions</a></p></details><h3>Check the real installation</h3><div class="checks"><label><input type="checkbox">I kept the old gallery folder or page for rollback.</label><label><input type="checkbox">The new address opens on a phone while signed out.</label><label><input type="checkbox">Images, artwork text, contact and keyboard links work.</label><label><input type="checkbox">The outbound gate works and I can return to my gallery.</label><label><input type="checkbox">If the embed is blocked, the ordinary gallery link works.</label><label><input type="checkbox">I restored an earlier version and kept a complete export.</label></div><p class="note">These are your checks, not an automated deployment result. To roll back, restore the old folder or change the website link/embed to its previous address.</p><h3>Optional Nostr discovery</h3><p>Your web gallery works before signing. Artist-signed discovery needs an external browser or remote signer connection. This editor never asks for a private key and does not publish to relays. A missing signer or relay must not block the local preview or export.</p></section>
+</main><footer>Local preparation tool · No hosting, payments or public launch performed<br>Opening a draft or importing a website starts a new collection and clears earlier session versions. Download your current private draft first.</footer>
+<script>
+'use strict';
+(() => {
+// Browser-compatible setup state. No network, signer, server or UI dependency.
+const SETUP_SCHEMA = 'relaygate/artist-draft/1';
+const TJ_IDENTITY = Object.freeze({ name: 'TJ Murphy', npub: 'npub10m0uf224v7tly6k6h8gl6kkmuhmx7969gmudmmhqj5pv65e03r9sxsumee', pubkey: '7edfc4a9556797f26adab9d1fd5adbe5f66f174546f8ddeee09502cd532f88cb', nip05: 'tj@tjm.art' });
+const SETUP_LIMITS = Object.freeze({ works: 500, imageBytes: 8 * 1024 * 1024, mediaBytes: 40 * 1024 * 1024, draftBytes: 60 * 1024 * 1024 });
+const enc = new TextEncoder();
+const fail = message => { throw new Error(message); };
+const text = (value, name, max = 4000) => value == null ? '' : typeof value === 'string' && value.length <= max ? value : fail(`${name} must be text, up to ${max} characters.`);
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
+const digest = bytes => crypto.subtle.digest('SHA-256', bytes).then(hex);
+const base64Size = value => typeof value !== 'string' || value.length % 4 || /[^A-Za-z0-9+/]/.test(value.replace(/={1,2}$/, '')) ? null : value.length * 3 / 4 - (value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0);
+
+function setupUrl(value, { optional = true, https = false } = {}) {
+  if ((value == null || value === '') && optional) return null;
+  if (typeof value !== 'string' || value.length > 4096 || /[\u0000-\u0020\u007f]/.test(value)) fail('Use a complete website address, such as https://artist.example/gallery/.');
+  let url; try { url = new URL(value); } catch { fail('Use a complete HTTP(S) website address.'); }
+  if (!(https ? ['https:'] : ['https:', 'http:']).includes(url.protocol) || url.username || url.password) fail(https ? 'Use an HTTPS address without a username or password.' : 'Use an HTTP(S) address without a username or password.');
+  return url.href;
+}
+
+function newArtistDraft() {
+  return { schema: SETUP_SCHEMA, artist: { name: '', siteUrl: null }, works: [], media: {}, gate: null, installation: { method: 'folder', galleryUrl: null }, revision: 0 };
+}
+
+function normalizeWork(value, index, imported = false) {
+  if (!value || typeof value !== 'object') fail(`Artwork ${index + 1} is not a record.`);
+  const id = text(value.id, 'Artwork ID', 128);
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(id)) fail(`Artwork ${index + 1} needs a stable ID.`);
+  let sizeIn = null;
+  if (value.sizeIn != null) {
+    if (!['w', 'h'].every(k => Number.isFinite(value.sizeIn[k]) && value.sizeIn[k] > 0 && value.sizeIn[k] <= 4000)) fail('Physical width and height must be positive numbers in inches.');
+    sizeIn = { w: value.sizeIn.w, h: value.sizeIn.h };
+  }
+  const localImage = value.localImage == null ? null : text(value.localImage, 'Media filename', 100);
+  if (localImage && !/^media\/[a-f0-9]{64}\.(png|jpg|webp|gif)$/.test(localImage)) {
+    // Importer downloads use another directory. Retain the remote source and
+    // ask for image files instead of assuming a local path exists in a browser.
+    if (!imported) fail('Local images must be content-addressed media files.');
+  }
+  return { id, title: text(value.title, 'Title', 500) || 'Untitled candidate', image: setupUrl(value.image), page: setupUrl(value.page), localImage: /^media\/[a-f0-9]{64}\.(png|jpg|webp|gif)$/.test(localImage || '') ? localImage : null, sha256: /^[a-f0-9]{64}$/.test(value.sha256) ? value.sha256 : null, titleSource: text(value.titleSource, 'Title source', 100), source: text(value.source, 'Source', 200), size: text(value.size, 'Size text', 300), sizeIn, sizeSource: text(value.sizeSource, 'Size source', 100), medium: text(value.medium, 'Medium', 300), year: value.year == null ? '' : text(String(value.year), 'Year', 50), alt: text(value.alt, 'Image description', 2000), description: text(value.description, 'Description', 10000), story: text(value.story, 'Artist story', 20000), rights: text(value.rights, 'Image permission note', 2000), included: value.included !== false, reviewed: !imported && value.reviewed === true, rightsConfirmed: !imported && value.rightsConfirmed === true };
+}
+
+function normalizeDraft(value, { imported = false } = {}) {
+  if (!value || ![SETUP_SCHEMA, 'relaygate/gallery/1'].includes(value.schema)) fail('Choose a Relay Gate draft or version 1 gallery JSON file.');
+  if (!Array.isArray(value.works) || value.works.length > SETUP_LIMITS.works) fail(`This editor supports up to ${SETUP_LIMITS.works} candidates. Split a larger collection first.`);
+  const isImport = imported || value.schema === 'relaygate/gallery/1';
+  const works = value.works.map((work, i) => normalizeWork(work, i, isImport));
+  if (new Set(works.map(w => w.id)).size !== works.length) fail('Artwork IDs are duplicated. No records were replaced.');
+  const media = {};
+  if (!isImport && value.media != null) {
+    if (typeof value.media !== 'object' || Array.isArray(value.media) || Object.keys(value.media).length > SETUP_LIMITS.works) fail('Invalid media collection.');
+    let total = 0;
+    for (const [name, asset] of Object.entries(value.media)) {
+      if (!/^media\/[a-f0-9]{64}\.(png|jpg|webp|gif)$/.test(name) || !asset || !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(asset.mime) || base64Size(asset.base64) == null) fail('Invalid or unsupported saved image.');
+      const estimated = base64Size(asset.base64);
+      if (estimated > SETUP_LIMITS.imageBytes || (total += estimated) > SETUP_LIMITS.mediaBytes) fail('Saved images exceed the editor size limit.');
+      media[name] = { mime: asset.mime, base64: asset.base64, originalName: text(asset.originalName, 'Original filename', 300) };
+    }
+  }
+  // A saved file can never restore a claim that a network identity was verified.
+  let gate = null;
+  const savedGate = value.gate || (isImport ? value.gates?.[0] : null);
+  if (savedGate?.url) gate = { url: setupUrl(savedGate.url, { optional: false, https: true }), label: text(savedGate.label, 'Gate label', 300) || 'Visit another gallery', status: 'unverified', target: savedGate.target === `37440:${TJ_IDENTITY.pubkey}:main` ? savedGate.target : null };
+  return { schema: SETUP_SCHEMA, artist: { name: text(value.artist?.name, 'Artist name', 300), siteUrl: setupUrl(value.artist?.siteUrl) }, works, media, gate, installation: { method: ['folder', 'embed', 'link', 'managed'].includes(value.installation?.method) ? value.installation.method : 'folder', galleryUrl: setupUrl(value.installation?.galleryUrl, { https: true }) }, revision: Number.isSafeInteger(value.revision) && value.revision >= 0 ? value.revision : 0 };
+}
+
+function parseDraft(json) {
+  if (typeof json !== 'string' || enc.encode(json).length > SETUP_LIMITS.draftBytes) fail('Draft exceeds 60 MiB. Use a smaller collection.');
+  return normalizeDraft(JSON.parse(json));
+}
+
+function saveCheckpoint(draft, history = []) {
+  const checked = normalizeDraft(draft), snapshot = structuredClone(checked);
+  checked.revision += 1;
+  // Keep metadata snapshots only; media bytes are shared in the current draft.
+  snapshot.media = {};
+  return { draft: checked, history: [...history, snapshot].slice(-5) };
+}
+
+function restoreCheckpoint(draft, history, index) {
+  if (!Number.isInteger(index) || index < 0 || index >= history.length) fail('Choose an available prior version.');
+  return normalizeDraft({ ...history[index], media: draft.media, revision: draft.revision + 1 });
+}
+
+function rasterType(bytes) {
+  const prefix = hex(bytes.subarray(0, 12));
+  if (prefix.startsWith('89504e470d0a1a0a')) return ['image/png', 'png'];
+  if (prefix.startsWith('ffd8ff')) return ['image/jpeg', 'jpg'];
+  if (prefix.startsWith('474946383761') || prefix.startsWith('474946383961')) return ['image/gif', 'gif'];
+  if (prefix.startsWith('52494646') && prefix.slice(16) === '57454250') return ['image/webp', 'webp'];
+  fail('Choose a PNG, JPEG, GIF or WebP image. SVG and other active formats are not accepted.');
+}
+
+async function addManualImage(draft, bytes, filename) {
+  if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > SETUP_LIMITS.imageBytes) fail('Each image must be no larger than 8 MiB.');
+  const next = normalizeDraft(draft), [mime, ext] = rasterType(bytes), sha256 = await digest(bytes), id = `work-${sha256.slice(0, 24)}`, localImage = `media/${sha256}.${ext}`;
+  if (next.works.some(w => w.id === id || w.localImage === localImage)) fail('This image is already in the draft.');
+  if (next.works.length >= SETUP_LIMITS.works) fail('The draft already has 500 candidates.');
+  let binary = ''; for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  next.media[localImage] = { mime, base64: btoa(binary), originalName: text(filename, 'Filename', 300) };
+  next.works.push(normalizeWork({ id, title: filename.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '), localImage, sha256, source: 'manual-file', titleSource: 'filename', included: true }, next.works.length));
+  return normalizeDraft(next);
+}
+
+async function attachImageToWork(draft, workId, bytes, filename) {
+  if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > SETUP_LIMITS.imageBytes) fail('Each image must be no larger than 8 MiB.');
+  const next = normalizeDraft(draft), work = next.works.find(w => w.id === workId);
+  if (!work) fail('Select an artwork before attaching an image.');
+  const [mime, ext] = rasterType(bytes), sha256 = await digest(bytes), localImage = `media/${sha256}.${ext}`;
+  let binary = ''; for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  next.media[localImage] = { mime, base64: btoa(binary), originalName: text(filename, 'Filename', 300) };
+  Object.assign(work, { localImage, sha256, source: 'artist-attached-file', reviewed: false, rightsConfirmed: false });
+  return normalizeDraft(next);
+}
+
+function readiness(draft) {
+  const checked = normalizeDraft(draft), included = checked.works.filter(w => w.included), problems = [];
+  if (!checked.artist.name.trim()) problems.push('Add the artist name.');
+  if (!included.length) problems.push('Include at least one artwork.');
+  for (const work of included) {
+    if (!work.reviewed) problems.push(`${work.title}: review the title, size and image description.`);
+    if (!work.rightsConfirmed) problems.push(`${work.title}: confirm permission to publish this image.`);
+    if (!work.image && !checked.media[work.localImage]) problems.push(`${work.title}: add its image file or a public image address.`);
+  }
+  return { ready: problems.length === 0, included: included.length, problems };
+}
+
+// This callback is trusted application code supplied by the Nostr integration,
+// not a flag accepted from a draft file or a user-pasted JSON response.
+async function connectToTj(resolveSignedGallery, { now = Math.floor(Date.now() / 1000) } = {}) {
+  if (typeof resolveSignedGallery !== 'function') fail('Signed-gallery lookup is not connected in this local editor. You can keep working and add an explicitly unverified web link.');
+  const result = await resolveSignedGallery({ ...TJ_IDENTITY, identifier: 'main' });
+  if (result?.status !== 'verified' || result.pubkey !== TJ_IDENTITY.pubkey || !/^[a-f0-9]{64}$/.test(result.eventId || '') || result.coordinate !== `37440:${TJ_IDENTITY.pubkey}:main` || result.location?.assertion !== 'artist-signed') fail('The resolver did not verify a gallery location under TJ’s supplied public key. No connection was changed.');
+  if (!Number.isSafeInteger(now) || !Number.isSafeInteger(result.checkedAt) || result.checkedAt > now + 60 || now - result.checkedAt > 300) fail('The lookup result is stale. Refresh it before connecting.');
+  return { url: setupUrl(result.location.url, { optional: false, https: true }), label: 'Visit TJ Murphy’s gallery', status: 'verified-key', target: result.coordinate, eventId: result.eventId, checkedAt: result.checkedAt, reachability: 'not-checked' };
+}
+
+function installationSnippet(method, url) {
+  const address = escapeHtml(setupUrl(url, { optional: false, https: true }));
+  const link = `<a href="${address}">Visit my gallery</a>`;
+  if (method === 'link') return link;
+  if (method === 'embed') return `<iframe src="${address}" title="Artwork gallery" width="100%" height="700" loading="lazy" sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" style="border:0"></iframe>\n<p>${link}</p>`;
+  if (method === 'folder') return `Upload every file from the gallery ZIP into the same new folder. Then add this link to your website:\n${link}`;
+  if (method === 'managed') return 'Managed hosting is not provisioned by this editor. Agree ownership, price, export and cancellation terms before choosing a provider. Keep a copy of the complete gallery ZIP.';
+  fail('Choose a supported installation method.');
+}
+
+function previewHtml(draft, { embeddedMedia = true } = {}) {
+  const checked = normalizeDraft(draft), link = (url, label) => url ? `<a href="${escapeHtml(url)}" target="_top" rel="noreferrer">${escapeHtml(label)}</a>` : '';
+  const cards = checked.works.filter(w => w.included).map(work => {
+    const asset = checked.media[work.localImage];
+    const image = asset ? embeddedMedia ? `data:${asset.mime};base64,${asset.base64}` : work.localImage : work.image;
+    return `<article id="${work.id}"><h2>${escapeHtml(work.title)}</h2>${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(work.alt || work.title)}" loading="lazy" referrerpolicy="no-referrer">` : '<p>Image not yet added.</p>'}<p>${escapeHtml([work.year, work.medium].filter(Boolean).join(' · '))}</p><p>${escapeHtml(work.sizeIn ? `${work.sizeIn.w} × ${work.sizeIn.h} inches (width × height)` : work.size || 'Physical size unknown')}</p>${work.description ? `<p>${escapeHtml(work.description)}</p>` : ''}${work.story ? `<h3>Artist story</h3><p class="story">${escapeHtml(work.story)}</p>` : ''}<p>${escapeHtml(work.rights || 'Contact the artist before reusing images.')}</p>${link(work.page, 'Artwork source')}<p>${work.reviewed ? 'Artist-reviewed metadata' : 'Candidate: review required'}</p></article>`;
+  }).join('');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: https: http:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${escapeHtml(checked.artist.name || 'Artwork gallery')}</title><style>body{font:18px/1.55 system-ui,sans-serif;color:#242825;background:#faf9f4;max-width:70rem;margin:auto;padding:1.4rem}a{color:#174975}a:focus-visible{outline:3px solid #874500;outline-offset:4px}h1,h2{line-height:1.2}.skip{position:absolute;left:-10000px}.skip:focus{position:static}.works{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:1rem}article{border:1px solid #b6bab4;padding:1rem}img{width:100%;height:17rem;object-fit:contain}p{overflow-wrap:anywhere}.story{white-space:pre-wrap}footer{border-top:1px solid;padding-top:1rem;margin-top:2rem}</style></head><body><a class="skip" href="#works">Skip to artworks</a><header><h1>${escapeHtml(checked.artist.name || 'Artwork gallery')}</h1><p>Unsigned web gallery. No Nostr account or wallet is needed to visit.</p>${link(checked.artist.siteUrl, 'Visit or contact the artist')}</header><main id="works" tabindex="-1"><div class="works">${cards || '<p>No artworks included.</p>'}</div>${checked.gate ? `<nav aria-label="Other galleries"><h2>Another gallery</h2>${link(checked.gate.url, checked.gate.label)}<p>Web link; verify the destination before visiting. A reciprocal gate requires the other artist’s agreement.</p></nav>` : ''}</main><footer><p>Artwork information and this gallery can be moved to another host.</p>${link('gallery.json', 'Gallery metadata')}</footer></body></html>`;
+}
+
+async function exportArtistGallery(draft) {
+  const checked = normalizeDraft(draft), result = readiness(checked);
+  if (!result.ready) fail(result.problems.join('\n'));
+  const works = checked.works.filter(w => w.included), media = {}, files = new Map();
+  for (const work of works) {
+    const asset = checked.media[work.localImage];
+    if (!asset) { work.localImage = null; work.sha256 = null; continue; }
+    const bytes = Uint8Array.from(atob(asset.base64), c => c.charCodeAt(0)), [, ext] = rasterType(bytes), sha256 = await digest(bytes);
+    if (work.localImage !== `media/${sha256}.${ext}` || work.sha256 && work.sha256 !== sha256) fail(`${work.title}: the saved image checksum does not match.`);
+    work.sha256 = sha256; media[work.localImage] = asset; files.set(work.localImage, bytes);
+  }
+  const publicDraft = { ...checked, works, media, revision: 0 };
+  const config = { schema: 'relaygate/gallery/1', artist: checked.artist, works: works.map(({ included, rightsConfirmed, ...work }) => ({ ...work, titleSource: 'artist-review', sizeSource: work.sizeIn ? 'artist-reviewed' : work.sizeSource || null })), gates: checked.gate ? [{ url: checked.gate.url, label: checked.gate.label }] : [], warnings: ['Unsigned web gallery. A signed network gallery requires external-signer onboarding.'] };
+  const missingMedia = works.filter(w => !w.localImage).map(w => ({ workId: w.id, url: w.image, reason: 'remote-only' }));
+  files.set('index.html', enc.encode(previewHtml(publicDraft, { embeddedMedia: false })));
+  files.set('gallery.json', enc.encode(JSON.stringify(config, null, 2) + '\n'));
+  files.set('gallery-editor.json', enc.encode(JSON.stringify(publicDraft) + '\n'));
+  files.set('media-inventory.json', enc.encode(JSON.stringify({ schema: 'relaygate/media-inventory/1', bundled: works.filter(w => w.localImage).map(w => ({ workId: w.id, path: w.localImage, sha256: w.sha256 })), missingMedia }, null, 2) + '\n'));
+  files.set('RESTORE.txt', enc.encode('Keep this entire folder. To edit, open the Relay Gate artist setup tool and choose Open draft or gallery, then select gallery-editor.json. Only included, reviewed works and their permitted media are in this export. Keep the separate private draft if you need excluded candidates. Upload all files into a NEW folder on your own host; add a link or supported iframe. To roll back, restore the old website link or folder. Remote images are not included and can disappear. This is an unsigned 2D gallery; no deployment, signer or payment service is included.\n'));
+  return { files, config, missingMedia };
+}
+
+// Small ZIP writer using the standard stored method: no compression or readers.
+// Files are controlled export names; CRC and central directory enable ordinary unzip.
+function storedZip(files) {
+  const chunks = [], central = []; let offset = 0;
+  const crc32 = data => { let crc = 0xffffffff; for (const b of data) { crc ^= b; for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); } return (crc ^ 0xffffffff) >>> 0; };
+  const header = size => { const bytes = new Uint8Array(size); return [bytes, new DataView(bytes.buffer)]; };
+  if (!(files instanceof Map) || files.size > 1000) fail('Too many export files.');
+  for (const [name, value] of files) {
+    if (!/^(media\/[a-f0-9]{64}\.(png|jpg|webp|gif)|index\.html|gallery\.json|gallery-editor\.json|media-inventory\.json|RESTORE\.txt)$/.test(name)) fail('Unexpected export filename.');
+    const data = value instanceof Uint8Array ? value : enc.encode(value), filename = enc.encode(name), crc = crc32(data);
+    const [local, l] = header(30 + filename.length); l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x800, true); l.setUint32(14, crc, true); l.setUint32(18, data.length, true); l.setUint32(22, data.length, true); l.setUint16(26, filename.length, true); local.set(filename, 30);
+    const [entry, c] = header(46 + filename.length); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x800, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, filename.length, true); c.setUint32(42, offset, true); entry.set(filename, 46);
+    chunks.push(local, data); central.push(entry); offset += local.length + data.length;
+  }
+  const centralSize = central.reduce((sum, bytes) => sum + bytes.length, 0), [end, e] = header(22);
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.size, true); e.setUint16(10, files.size, true); e.setUint32(12, centralSize, true); e.setUint32(16, offset, true);
+  const all = [...chunks, ...central, end], output = new Uint8Array(offset + centralSize + end.length); let cursor = 0;
+  for (const bytes of all) { output.set(bytes, cursor); cursor += bytes.length; }
+  return output;
+}
+
+// Included by the developer build script after artist-setup.js. Artist-facing
+// distribution is a single local HTML file, with no imports or server required.
+const $ = id => document.getElementById(id);
+let draft = newArtistDraft(), history = [], selected = null, verifiedGate = null, busy = false;
+const message = (value, error = false) => { $('status').textContent = value; $('status').className = error ? 'error' : ''; };
+const on = (id, event, action) => $(id).addEventListener(event, async e => {
+  if (busy) return;
+  busy = true; document.body.inert = true; document.body.setAttribute('aria-busy', 'true');
+  try { await action(e); } catch (error) { message(error.message, true); }
+  finally { busy = false; document.body.inert = false; document.body.removeAttribute('aria-busy'); }
+});
+const snapshot = () => { const checkpoint = saveCheckpoint(draft, history); history = checkpoint.history; draft = checkpoint.draft; };
+const download = (name, content, type) => { const url = URL.createObjectURL(new Blob([content], { type })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+const currentWork = () => draft.works.find(w => w.id === selected);
+const formatSize = value => value == null ? '' : String(Math.round(value * 1000000) / 1000000);
+
+function render() {
+  $('artist-name').value = draft.artist.name; $('site-url').value = draft.artist.siteUrl || '';
+  $('work-list').replaceChildren();
+  for (const work of draft.works) {
+    const option = document.createElement('option'); option.value = work.id;
+    option.textContent = `${work.included ? 'Included' : 'Excluded'} · ${work.reviewed ? 'Reviewed' : 'Review needed'} · ${work.title}`;
+    $('work-list').append(option);
+  }
+  if (!draft.works.some(w => w.id === selected)) selected = draft.works[0]?.id || null;
+  $('work-list').value = selected || '';
+  $('work-editor').hidden = !selected; $('empty').hidden = !!selected;
+  $('work-count').textContent = `${draft.works.length} candidates · ${draft.works.filter(w => w.included).length} included`;
+  const work = currentWork();
+  if (work) {
+    for (const key of ['title', 'medium', 'year', 'alt', 'description', 'story', 'rights']) $(key).value = work[key] || '';
+    $('image-url').value = work.image || ''; $('page-url').value = work.page || '';
+    $('width').value = formatSize(work.sizeIn?.w); $('height').value = formatSize(work.sizeIn?.h); $('units').value = 'in';
+    for (const key of ['included', 'reviewed', 'rightsConfirmed']) $(key).checked = work[key];
+    $('provenance').textContent = `Source: ${work.source || 'unspecified'}; original title: ${work.titleSource || 'unspecified'}; size note: ${work.size || 'unknown'}. ID: ${work.id}`;
+    const asset = draft.media[work.localImage];
+    $('work-image').hidden = !asset;
+    if (asset) { $('work-image').src = `data:${asset.mime};base64,${asset.base64}`; $('work-image').alt = work.alt || work.title; } else $('work-image').removeAttribute('src');
+  }
+  $('gate-url').value = draft.gate?.url || '';
+  $('gate-status').textContent = verifiedGate && verifiedGate.url === draft.gate?.url ? 'The connected resolver checked the signed location under TJ’s supplied key. Reachability and reciprocal approval are not checked.' : 'No verified network connection. An ordinary link remains an unverified web gate.';
+  $('method').value = draft.installation.method; $('gallery-url').value = draft.installation.galleryUrl || '';
+  $('versions').replaceChildren();
+  history.forEach((item, i) => { const option = document.createElement('option'); option.value = String(i); option.textContent = `Earlier version ${item.revision} · ${item.works.length} candidates`; $('versions').append(option); });
+  $('restore-version').disabled = !history.length;
+  const ready = readiness(draft); $('readiness').textContent = ready.ready ? `${ready.included} reviewed artworks ready to export.` : ready.problems.slice(0, 5).join('\n') + (ready.problems.length > 5 ? `\n…and ${ready.problems.length - 5} more review items.` : '');
+}
+
+function saveArtist() {
+  const name = $('artist-name').value, siteUrl = setupUrl($('site-url').value.trim());
+  if (name !== draft.artist.name || siteUrl !== draft.artist.siteUrl) { snapshot(); draft.artist = { name, siteUrl }; }
+  render();
+}
+
+function saveWork() {
+  const work = currentWork(); if (!work) return;
+  const width = $('width').value, height = $('height').value;
+  if (!!width !== !!height) throw new Error('Enter both physical dimensions, or leave both blank when unknown.');
+  const factor = $('units').value === 'cm' ? 1 / 2.54 : 1;
+  const update = { ...work, image: setupUrl($('image-url').value.trim()), page: setupUrl($('page-url').value.trim()), sizeIn: width && height ? { w: Number(width) * factor, h: Number(height) * factor } : null };
+  for (const key of ['title', 'medium', 'year', 'alt', 'description', 'story', 'rights']) update[key] = $(key).value;
+  for (const key of ['included', 'reviewed', 'rightsConfirmed']) update[key] = $(key).checked;
+  if (width && height) { update.size = `${width} × ${height} ${$('units').value} (width × height)`; update.sizeSource = 'artist-reviewed'; }
+  // Preserve an imported size note when no parsed dimensions existed. Clearing
+  // previously entered dimensions is an explicit change to unknown size.
+  else if (work.sizeIn) { update.size = ''; update.sizeSource = ''; }
+  // Validate first so an error cannot erase the last good draft.
+  const next = normalizeDraft({ ...draft, works: draft.works.map(w => w.id === selected ? update : w) });
+  if (JSON.stringify(next.works) !== JSON.stringify(draft.works)) { snapshot(); draft = { ...next, revision: draft.revision }; }
+  render(); message('Artwork changes saved in this session. Download a draft to keep them after closing.');
+}
+
+function flushEditors() {
+  // saveWork renders the controls, so preserve the artist's unsaved fields.
+  const name = $('artist-name').value, site = $('site-url').value;
+  saveWork(); $('artist-name').value = name; $('site-url').value = site; saveArtist();
+}
+for (const id of ['title', 'medium', 'year', 'alt', 'description', 'story', 'width', 'height', 'units', 'page-url', 'rights']) {
+  $(id).addEventListener('input', () => { $('reviewed').checked = false; });
+}
+for (const id of ['image-url', 'rights']) {
+  $(id).addEventListener('input', () => { $('reviewed').checked = false; $('rightsConfirmed').checked = false; });
+}
+on('save-artist', 'click', () => { flushEditors(); message('Artist details saved in this session.'); });
+on('work-list', 'change', e => { const next = e.target.value; flushEditors(); selected = next; render(); });
+on('save-work', 'click', flushEditors);
+on('open-draft', 'change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > SETUP_LIMITS.draftBytes) throw new Error('Draft is larger than 60 MiB.');
+  const next = parseDraft(await file.text()); draft = next; history = []; selected = null; verifiedGate = null; render();
+  message('Opened the file. Imported candidates need review; saved network verification must be refreshed. No data was published.'); e.target.value = '';
+});
+on('add-images', 'change', async e => {
+  flushEditors();
+  let next = draft;
+  for (const file of e.target.files) {
+    if (file.size > SETUP_LIMITS.imageBytes) throw new Error('Each image must be no larger than 8 MiB.');
+    next = await addManualImage(next, new Uint8Array(await file.arrayBuffer()), file.name);
+  }
+  snapshot(); draft = { ...next, revision: draft.revision }; selected = next.works.at(-1)?.id; render(); message('Images added locally. Review each candidate and confirm image permission.'); e.target.value = '';
+});
+on('attach-image', 'change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > SETUP_LIMITS.imageBytes) throw new Error('Each image must be no larger than 8 MiB.');
+  flushEditors(); const next = await attachImageToWork(draft, selected, new Uint8Array(await file.arrayBuffer()), file.name);
+  snapshot(); draft = { ...next, revision: draft.revision }; render(); message('Image attached to the same artwork ID. Review and confirm permission for the replacement image.'); e.target.value = '';
+});
+on('add-url', 'click', async () => {
+  const image = setupUrl($('new-image-url').value.trim(), { optional: false });
+  flushEditors();
+  const id = `work-${(await digest(enc.encode(image))).slice(0, 24)}`;
+  if (draft.works.some(w => w.id === id)) throw new Error('That image address is already present.');
+  const next = normalizeDraft({ ...draft, works: [...draft.works, { id, title: 'Untitled candidate', image, source: 'manual-url', titleSource: 'manual', included: true }] });
+  snapshot(); draft = { ...next, revision: draft.revision }; selected = id; $('new-image-url').value = ''; render(); message('Image link added. Its image is not bundled unless you add a local file.');
+});
+on('save-draft', 'click', () => { flushEditors(); download('relaygate-private-draft.json', JSON.stringify(normalizeDraft(draft)), 'application/json'); message('Draft download prepared. It includes excluded candidates and local images; keep it private.'); });
+on('restore-version', 'click', () => { draft = restoreCheckpoint(draft, history, Number($('versions').value)); verifiedGate = null; render(); message('Earlier metadata restored. Download a new draft when ready.'); });
+on('preview', 'click', () => { flushEditors(); $('preview-frame').srcdoc = previewHtml(draft); $('preview-panel').hidden = false; message('Local 2D preview opened. Remote image addresses may be requested now. Nothing is hosted or signed.'); });
+on('close-preview', 'click', () => { $('preview-frame').srcdoc = ''; $('preview-panel').hidden = true; });
+on('connect-tj', 'click', async () => {
+  flushEditors();
+  const gate = await connectToTj(window.RelayGateSetupAdapters?.resolveSignedGallery);
+  snapshot(); draft.gate = gate; verifiedGate = gate; render(); message('TJ’s signed destination was checked by the resolver. Test the visit and return path before installing.');
+});
+on('save-gate', 'click', () => {
+  const url = setupUrl($('gate-url').value.trim(), { https: true }); flushEditors(); snapshot(); draft.gate = url ? { url, label: 'Visit another gallery', status: 'unverified' } : null; verifiedGate = null; render(); message(url ? 'Saved an unverified web link. No reciprocal gate was requested.' : 'Gate removed from this draft.');
+});
+on('make-snippet', 'click', () => {
+  const method = $('method').value, galleryUrl = setupUrl($('gallery-url').value.trim(), { optional: method === 'managed', https: true });
+  const snippet = method === 'managed' ? 'Managed hosting is not available in this local editor. Agree provider terms and keep your export before arranging hosting.' : installationSnippet(method, galleryUrl);
+  snapshot(); draft.installation = { method, galleryUrl }; $('snippet').value = snippet;
+  message('Installation text prepared. This does not upload or check a website. Use the checklist below on your actual host.');
+});
+on('export-gallery', 'click', async () => {
+  flushEditors(); const result = await exportArtistGallery(draft);
+  download('relaygate-gallery.zip', storedZip(result.files), 'application/zip');
+  message(`Gallery ZIP prepared with ${result.config.works.length} reviewed works. ${result.missingMedia.length} images remain remote-only. Keep a private draft separately. No deployment was performed.`);
+});
+on('import-website', 'click', async () => {
+  const siteUrl = setupUrl($('site-url').value.trim(), { optional: false });
+  const importer = window.RelayGateSetupAdapters?.importWebsite;
+  if (typeof importer !== 'function') throw new Error('Website import is not connected in this local editor. Add image files or open a gallery.json supplied by the importer. Your current edits are unchanged.');
+  const imported = await importer({ siteUrl });
+  const next = normalizeDraft(imported, { imported: true }); draft = next; history = []; selected = null; verifiedGate = null; render(); message('Website candidates loaded as a new draft. Review them before exporting.');
+});
+window.addEventListener('beforeunload', event => { if (draft.works.length) { event.preventDefault(); event.returnValue = ''; } });
+render();
+
+})();
+</script>
+</body></html>
